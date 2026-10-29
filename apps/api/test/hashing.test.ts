@@ -66,8 +66,10 @@ describe("Hashing Core Engine", () => {
       const corruptedPayload = Buffer.from(basePayload);
       const targetIndex = seed % corruptedPayload.length;
 
-      // Inverte os bits do byte selecionado
-      corruptedPayload[targetIndex] ^= 0xff;
+      const currentByte = corruptedPayload[targetIndex];
+      if (currentByte !== undefined) {
+        corruptedPayload[targetIndex] = currentByte ^ 0xff;
+      }
 
       const corruptedDigest = await digest(corruptedPayload, "sha256");
 
