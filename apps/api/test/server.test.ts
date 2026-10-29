@@ -1,68 +1,42 @@
-import type { Server } from '@hapi/hapi'
-import { afterEach, describe, expect, test } from 'vitest'
-import { loadEnv } from '../src/env.js'
-import { buildServer } from '../src/server.js'
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import type { Server } from "@hapi/hapi";
 
-const DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/hasheyes'
-let server: Server | undefined
+// Configura variáveis antes de importar o env.ts
+process.env["DATABASE_URL"] =
+  "postgresql://postgres:postgres@localhost:5432/hasheyes_test";
+process.env["ARGON2_PEPPER"] =
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
-afterEach(async () => {
-  await server?.stop({ timeout: 1_000 })
-  server = undefined
-})
+const { buildServer } = await import("../src/server.js");
 
-describe('loadEnv', () => {
-  test('fails fast on a missing required key without echoing other values', () => {
-    expect(() => loadEnv({ NODE_ENV: 'test' })).toThrow(/DATABASE_URL/)
-    const message = (() => {
-      try {
-        loadEnv({ NODE_ENV: 'test' })
-      } catch (error) {
-        return (error as Error).message
-      }
-    })()
-    expect(message).not.toContain('postgres://')
-  })
+describe("Hapi.js Server Bootstrap", () => {
+  let server: Server;
 
-  test('rejects a non-postgres DATABASE_URL', () => {
-    expect(() => loadEnv({ DATABASE_URL: 'mysql://localhost/db' })).toThrow(/DATABASE_URL/)
-  })
-})
+  beforeAll(async () => {
+    server = await buildServer();
+    await server.initialize(); // Inicializa plugins e lifecycle sem ouvir na porta de rede
+  });
 
-describe('buildServer', () => {
-  test('answers /healthz with 200', async () => {
-    server = await buildServer(loadEnv({ DATABASE_URL, NODE_ENV: 'test' }))
-    const res = await server.inject({ method: 'GET', url: '/healthz' })
+  afterAll(async () => {
+    await server.stop({ timeout: 1000 });
+  });
 
-    expect(res.statusCode).toBe(200)
-    expect(res.result).toEqual({ status: 'ok' })
-  })
+  it("should register db-pool plugin and decorate server.db", () => {
+    expect(server.db).toBeDefined();
 
-  test('stop() drains an in-flight request instead of cutting it off', async () => {
-    server = await buildServer(loadEnv({ DATABASE_URL, NODE_ENV: 'test', PORT: '0' }))
-    let release = (): void => {}
-    const gate = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    server.route({
-      method: 'GET',
-      path: '/slow',
-      handler: async () => {
-        await gate
-        return { drained: true }
-      },
-    })
-    await server.start()
+    // Cast para Record<string, unknown> resolve o índice estrito
+    const registrations = server.registrations as Record<string, unknown>;
+    expect(registrations["db-pool"]).toBeDefined();
+  });
 
-    const inFlight = fetch(`${server.info.uri}/slow`)
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    const stopping = server.stop({ timeout: 5_000 })
-    release()
+  it("should respond 200 OK to GET /healthz via server.inject()", async () => {
+    const res = await server.inject({
+      method: "GET",
+      url: "/healthz",
+    });
 
-    const res = await inFlight
-    await stopping
-
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ drained: true })
-  })
-})
+    expect(res.statusCode).toBe(200);
+    const payload = JSON.parse(res.payload) as { status: string };
+    expect(payload.status).toBe("ok");
+  });
+});

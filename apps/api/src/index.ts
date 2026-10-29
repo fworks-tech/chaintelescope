@@ -1,16 +1,26 @@
-import { loadEnv } from './env.js'
-import { buildServer } from './server.js'
+import { loadEnv } from "./env.js";
+import { buildServer } from "./server.js";
 
-const server = await buildServer(loadEnv())
+const env = loadEnv();
 
-async function shutdown(signal: string): Promise<void> {
-  server.log(['info'], `${signal} received, draining`)
-  await server.stop({ timeout: 10_000 })
-  process.exit(0)
-}
+const server = await buildServer(env);
 
-process.once('SIGTERM', () => void shutdown('SIGTERM'))
-process.once('SIGINT', () => void shutdown('SIGINT'))
+const shutdown = async (signal: string): Promise<void> => {
+  server.log(
+    ["info", "lifecycle"],
+    `${signal} received. Draining in-flight connections...`,
+  );
+  try {
+    await server.stop({ timeout: 10_000 });
+    process.exit(0);
+  } catch (err) {
+    server.log(["error", "lifecycle"], `Error during shutdown: ${String(err)}`);
+    process.exit(1);
+  }
+};
 
-await server.start()
-server.log(['info'], `listening on ${server.info.uri}`)
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
+process.once("SIGINT", () => void shutdown("SIGINT"));
+
+await server.start();
+server.log(["info", "lifecycle"], `Hapi listening on ${server.info.uri}`);
