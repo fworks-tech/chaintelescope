@@ -1,0 +1,28 @@
+{
+  "name": "@hasheyes/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@hapi/hapi": "^21.4.11",
+    "@hapi/joi": "^17.1.1",
+    "@hasheyes/shared": "workspace:*",
+    "hapi-pino": "^13.0.0",
+    "joi": "^18.3.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/hapi__hapi": "^21.0.0",
+    "@types/hapi__joi": "^17.1.15",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "vitest": "^5.0.5"
+  }
+}
