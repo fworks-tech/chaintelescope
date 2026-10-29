@@ -24,43 +24,43 @@ Status Legend:
 | `data/newsletter_subscriptions.json` | Postgres | `apps/api/src/db/migrations/002_subscribers.sql` | `ported` | Replaced flat JSON file with a persistent Postgres table with ACID guarantees (`M3`). |
 | `src/core/hasher.py` | `apps/api` | `apps/api/src/core/hasher.ts` | `ported` | Converted synchronous hashing into non-blocking streams and worker offloading (`M2`). |
 | `src/utils/helpers.py` | `packages/shared` | `packages/shared/src/utils/` | `ported` | Pure validation functions and string parsers shared between API and Web. |
-| `src/app_shell.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/logging.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/styles.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/worker.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/__init__.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/assistant.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/chart_theme.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/dashboard_header.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/feed_panels.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/kpi_row.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/newsletter.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/price_trend.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/risk_graph.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/trending_report.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/dashboard_query.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/database.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/mock_market.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/__init__.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/alerts/rules.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/market/ccxt_adapter.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/market/config.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/news/models.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/newsletter/delivery.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/newsletter/store.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/validation/email.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/validation/__init__.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/views/alerts_view.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/views/dashboard_view.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/views/newsletter_view.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/views/news_view.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/views/risk_view.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/views/__init__.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `pages/alerts.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `pages/dashboard.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `pages/news.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `pages/newsletter.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `pages/risk.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/components/__init__.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
-| `src/data/market/models.py` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/app_shell.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/logging.py` | `apps/web` / `apps/api` | `intentional gap` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/styles.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/worker.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/__init__.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/assistant.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/chart_theme.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/dashboard_header.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/feed_panels.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/kpi_row.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/newsletter.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/price_trend.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/risk_graph.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/trending_report.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/dashboard_query.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/database.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/mock_market.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/__init__.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/alerts/rules.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/market/ccxt_adapter.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/market/config.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/news/models.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/newsletter/delivery.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/newsletter/store.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/validation/email.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/validation/__init__.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/views/alerts_view.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/views/dashboard_view.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/views/newsletter_view.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/views/news_view.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/views/risk_view.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/views/__init__.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `pages/alerts.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `pages/dashboard.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `pages/news.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `pages/newsletter.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `pages/risk.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/components/__init__.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
+| `src/data/market/models.py` | `apps/web` / `apps/api` | `apps/web` / `apps/api` | `intentional gap` | Tracked during M4/M5 parity. |
 | `src/data/market/service.py` | `apps/api` | `apps/api/src/services/market/` | `ported` | Provider orchestration. |
