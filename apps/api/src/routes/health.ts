@@ -1,15 +1,14 @@
-import { HEALTH_PATH, type HealthResponse } from '@hasheyes/shared'
-import type { Plugin, Server } from '@hapi/hapi'
+import type { Plugin, Server } from "@hapi/hapi";
 
 export const healthPlugin: Plugin<void> = {
-  name: 'health',
-  version: '0.0.0',
+  name: "health",
+  version: "0.0.0",
   register(server: Server) {
     server.route({
-      method: 'GET',
-      path: HEALTH_PATH,
-      options: { tags: ['api'] },
-      handler: (): HealthResponse => ({ status: 'ok' }),
-    })
+      method: "GET",
+      path: "/healthz",
+      options: { tags: ["api"] },
+      handler: () => ({ status: "ok" }),
+    });
   },
-}
+};
