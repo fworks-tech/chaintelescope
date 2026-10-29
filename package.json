@@ -8,10 +8,38 @@
   },
   "scripts": {
     "build": "pnpm -r build",
+    "build:shared": "pnpm --filter @hasheyes/shared build",
+    "build:api": "pnpm --filter @hasheyes/api build",
+    "build:web": "pnpm --filter @hasheyes/web build",
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @hasheyes/api dev",
+    "dev:web": "pnpm --filter @hasheyes/web dev",
+    "start": "pnpm --filter @hasheyes/api start",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm build && pnpm -r test"
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml}\"",
+    "test": "pnpm build:shared && pnpm -r test",
+    "test:unit": "pnpm -r test:unit",
+    "test:integration": "pnpm --filter @hasheyes/api test:integration",
+    "test:coverage": "pnpm -r test:coverage",
+    "test:watch": "pnpm -r test:watch",
+    "db:migrate": "pnpm --filter @hasheyes/api db:migrate",
+    "db:migrate:down": "pnpm --filter @hasheyes/api db:migrate:down",
+    "db:seed": "pnpm --filter @hasheyes/api db:seed",
+    "db:reset": "pnpm --filter @hasheyes/api db:reset",
+    "docker:build": "docker build -t hasheyes-api -f apps/api/Dockerfile .",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down -v",
+    "docker:logs": "docker compose logs -f",
+    "profile:cpu": "node --prof apps/api/dist/index.js",
+    "profile:process": "node --prof-process isolate-*.log > v8-profile.txt",
+    "clean": "pnpm -r exec rm -rf dist node_modules coverage .turbo",
+    "clean:hard": "git clean -xdf -e .env*"
   },
   "devDependencies": {
+    "prettier": "^3.5.0",
     "typescript": "^6.0.2"
   }
 }
