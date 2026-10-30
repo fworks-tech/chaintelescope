@@ -1,9 +1,10 @@
-export type AssetSymbol = string
+export type AssetSymbol = string;
 
-export const HEALTH_PATH = '/healthz'
+export const HEALTH_PATH = "/healthz";
 
 export interface HealthResponse {
-  status: 'ok'
+  status: "ok";
 }
 
-export * from './hash.js';
+export * from "./hash.js";
+export * from "./canonical.js";
