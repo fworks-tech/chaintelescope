@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Buffer } from "node:buffer";
 import process from "node:process";
-import { TaskPool, TaskTimeoutError } from "../dist/src/workers/pool.js";
-import { parseFeedTask } from "../dist/src/workers/tasks/parse-feed.js";
-import { matchBlocklistTask } from "../dist/src/workers/tasks/match-blocklist.js";
+import { TaskPool, TaskTimeoutError } from "../dist/workers/pool.js";
+import { parseFeedTask } from "../dist/workers/tasks/parse-feed.js";
+import { matchBlocklistTask } from "../dist/workers/tasks/match-blocklist.js";
 
 describe("Worker Threads TaskPool", () => {
   it("bounds concurrency to pool size without exceeding live worker limit", async () => {
