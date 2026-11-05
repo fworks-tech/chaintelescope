@@ -69,7 +69,7 @@ describe.skipIf(!DATABASE_URL)("migrations against a real database", () => {
     const { rows } = await pool.query<{ indexdef: string }>(
       `SELECT indexdef FROM pg_indexes WHERE indexname = 'scans_pending_idx'`,
     );
-    expect(rows[0]?.indexdef).toMatch(/WHERE \(status = 'pending'\)/);
+    expect(rows[0]?.indexdef).toMatch(/WHERE \(status = 'pending'(::text)?\)/);
   });
 
   test("double ingest of the same item keeps one row", async () => {

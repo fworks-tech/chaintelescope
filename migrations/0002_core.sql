@@ -8,12 +8,13 @@ CREATE TABLE assets (
 );
 
 CREATE TABLE news_items (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  content_hash  TEXT NOT NULL UNIQUE,
-  title         TEXT NOT NULL,
-  url           TEXT NOT NULL,
-  published_at  TIMESTAMPTZ NOT NULL,
-  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content_hash      TEXT NOT NULL UNIQUE,
+  title             TEXT NOT NULL,
+  url               TEXT NOT NULL,
+  published_at      TIMESTAMPTZ NOT NULL,
+  canonical_payload TEXT NOT NULL,
+  first_seen_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX news_items_published_at_idx ON news_items (published_at DESC);
