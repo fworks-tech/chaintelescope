@@ -4,6 +4,27 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Node.js 20+ / TypeScript monorepo (`apps/api`, `apps/web`, `packages/shared`) with pnpm workspaces and strict TypeScript.
+- Hapi.js API shell: Joi-validated environment contract, plugin composition, `GET /healthz`, graceful shutdown on `SIGTERM`/`SIGINT`.
+- Content-addressed hashing core over `node:crypto` streams, a streaming scan pipeline with backpressure/abort/progress, and a `worker_threads` task pool.
+- `docs/port-inventory.md` regenerated from the code; anything without a caller or persistence is marked `partial` instead of `ported`.
+- `docs/adr/archive/` holding ADRs superseded by the Node/TypeScript cutover.
+
+### Changed
+
+- CI runs the Node gates (`typecheck`, `lint`, `test`, `build`) alongside restored Python gates; `pnpm test` builds first because the Node tests import compiled output.
+- `apps/web` renamed to `@chaintelescope/web` so workspace filters resolve; `react-router-dom` and `recharts` removed until they are used.
+- README, `AGENTS.md` and `docs/Architecture.md` now describe both stacks and their real state instead of the intended end state.
+
+### Removed
+
+- `apps/web/package-lock.json` (duplicate npm lockfile inside a pnpm workspace), the empty `.pre-commit-config.yaml`, and the empty `src/worker.py` / `src/data/database.py`.
+- Unused API dependencies `@hapi/joi`, `@types/hapi__joi`, `@types/hapi__hapi`.
+
 ## [0.3.0] — 2026-07-01
 
 ### Added

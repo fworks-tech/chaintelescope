@@ -1,5 +1,7 @@
 # Deployment
 
+> **Status:** runbook guidance, not a shipped artifact. This repository has no root `Dockerfile` and no `docker-compose.yml`; the `apps/api/Dockerfile` is a distroless image for the Node API and is not part of these steps. Deploy the Streamlit app with your own container image, or use Streamlit Community Cloud (the live URL).
+
 ChainTelescope is a Streamlit app designed to run behind a reverse proxy on a VPS or container environment. This guide covers Docker deployment, environment configuration, domain setup, and CI/CD.
 
 ## Quick start (Docker)

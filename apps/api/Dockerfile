@@ -19,11 +19,11 @@ COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
 # Build de tipos e compilação
-RUN pnpm --filter @hasheyes/shared build
-RUN pnpm --filter @hasheyes/api build
+RUN pnpm --filter @chaintelescope/shared build
+RUN pnpm --filter @chaintelescope/api build
 
 # Isola os artefatos de produção em uma pasta separada
-RUN pnpm --filter @hasheyes/api deploy --prod /prod/api
+RUN pnpm --filter @chaintelescope/api deploy --prod /prod/api
 
 # -----------------------------------------------------------
 # STAGE 2: Distroless Runtime
@@ -40,4 +40,4 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
-CMD ["dist/index.js"]
+CMD ["dist/main.js"]
