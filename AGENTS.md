@@ -32,7 +32,7 @@ Python:
 
 Node:
 1. `pnpm build` — must precede tests: `apps/api/test/worker-pool.test.ts` imports `../dist/**` and `@chaintelescope/shared` resolves to its `dist/`
-2. `pnpm -r typecheck` (shared, api, web)
+2. `pnpm -r typecheck` (shared, api, web) — needs `packages/shared` built first (`pnpm build:shared`), because types resolve through its `dist/`
 3. `pnpm -r lint` (oxlint on `apps/web`; the API has no lint yet)
 4. `pnpm test` (= `pnpm build && pnpm -r test`)
 
