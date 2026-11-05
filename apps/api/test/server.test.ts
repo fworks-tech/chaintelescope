@@ -6,6 +6,7 @@ process.env["DATABASE_URL"] =
   "postgresql://postgres:postgres@localhost:5432/chaintelescope_test";
 process.env["ARGON2_PEPPER"] =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+process.env["JWT_ACCESS_SECRET"] = "test-only-access-secret-0123456789abcdef";
 
 const { buildServer } = await import("../src/server.js");
 

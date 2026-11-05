@@ -3,7 +3,7 @@
 One repo, two stacks:
 
 - **Python 3.11 / Streamlit at the repo root** — the only working product today. Frozen for features, still gets bug fixes.
-- **Node.js 20+ / TypeScript monorepo in `apps/` + `packages/`** — the target architecture, mid-migration. Right now it answers exactly one route (`GET /healthz`).
+- **Node.js 20+ / TypeScript monorepo in `apps/` + `packages/`** — the target architecture, mid-migration. Right now it answers `GET /healthz` and the `/auth/*` session endpoints; everything else is still Python.
 
 Do not describe the Node side as a finished port. `docs/port-inventory.md` is the honest scorecard; regenerate its status column from the code before claiming parity.
 
@@ -16,7 +16,7 @@ python -m venv .venv
 pip install -r requirements.txt
 streamlit run app.py
 
-# Node API (needs a DATABASE_URL and ARGON2_PEPPER; see apps/api/.env.example)
+# Node API (needs a DATABASE_URL, ARGON2_PEPPER and JWT_ACCESS_SECRET; see apps/api/.env.example)
 pnpm install
 pnpm build
 pnpm --filter @chaintelescope/api start        # -> dist/main.js
@@ -47,8 +47,8 @@ Node:
   - `src/workers/` — `TaskPool` + `tasks/{parse-feed,match-blocklist}.ts`
   - `src/ingest/` — canonicalise → sha256 → repo `insertIfAbsent` (no caller yet)
   - `src/scans/` — state machine, `runScan`, in-process `ScanDaemon`, cancellation registry; wired into `buildServer` only when a source adapter is supplied
-  - `src/auth/` — Argon2id hashing with the OWASP floor, pepper, `needsUpgrade` and the login throttle (no routes yet)
-  - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
+  - `src/auth/` — Argon2id + pepper, login throttle, JWT access tokens (`@hapi/jwt`), opaque refresh tokens with rotation/reuse detection, scheme + `/auth/*` routes
+  - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets,auth}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
   - `src/routes/` — `health.ts` only
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
@@ -74,13 +74,15 @@ Python:
 ## Config & secrets
 
 - Python: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWS_FEED_URLS`, `NEWSLETTER_*`, `CORS_ORIGINS`. See `docs/configuration.md`.
-- Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`). Nothing loads `.env` automatically — use `node --env-file`.
+- Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`). Nothing loads `.env` automatically — use `node --env-file`.
 - Never commit `.env`, `.streamlit/secrets.toml`, or real peppers/JWT secrets.
 
 ## Known gotchas
 
-- `ARGON2_PEPPER` is required at boot and now consumed by `src/auth/password.ts`; no route calls it until #120. `argon2` needs its install script (`allowBuilds: argon2` in `pnpm-workspace.yaml`) — pnpm blocks it by default and `import "argon2"` then fails at load.
+- `ARGON2_PEPPER` and `JWT_ACCESS_SECRET` are required at boot. The pepper feeds `src/auth/password.ts`; the secret signs 15-minute access tokens. `argon2` needs its install script (`allowBuilds: argon2` in `pnpm-workspace.yaml`) — pnpm blocks it by default and `import "argon2"` then fails at load.
 - `LoginThrottle` is in-memory and per process; a second API instance has separate counters. Moving to Redis is a separate chore, noted in `docs/security/passwords.md`.
+- Refresh rotation revokes the whole family when an already-rotated token is replayed. Both the stolen and the current token die; the user logs in again. Cookie is `Path=/auth`, so only the auth routes receive it.
+- `GET /auth/me` and the `jwt` strategy exist, but there is no admin route yet (`/admin/*` lands in #122). Scope enforcement is proven in `test/auth-session.test.ts` with a test-registered route.
 - No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`; `apps/api/vitest.config.ts` disables file parallelism because the DB suites share one schema.
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
 - `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.

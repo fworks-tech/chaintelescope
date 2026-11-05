@@ -11,7 +11,8 @@ type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export type ScanKind = "upload" | "feed" | "snapshot";
 
-export type ScanStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type ScanStatus =
+  "pending" | "running" | "completed" | "failed" | "cancelled";
 
 export interface AssetsTable {
   symbol: string;
@@ -52,6 +53,8 @@ export interface RefreshTokensTable {
   user_id: string;
   family_id: string;
   token_hash: string;
+  /** Token que este substituiu; `null` no primeiro da família (0008). */
+  rotated_from: string | null;
   rotated_at: Timestamp | null;
   revoked_at: Timestamp | null;
   expires_at: Timestamp;

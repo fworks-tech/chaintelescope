@@ -13,6 +13,7 @@ import Joi from "joi";
  * @property {string} HOST - Hostname de escuta da interface de rede (ex.: '0.0.0.0').
  * @property {number} PORT - Porta TCP para o listener do servidor HTTP.
  * @property {string} DATABASE_URL - URI de conexão RFC com o banco de dados PostgreSQL.
+ * @property {string} JWT_ACCESS_SECRET - Segredo HMAC (>= 32 caracteres) para assinar os access tokens.
  * @property {string} JWT_ACCESS_TTL - Janela de expiração temporal para tokens de acesso de curta duração (ex.: '15m').
  * @property {number} JWT_REFRESH_TTL_DAYS - Tempo de vida em dias para rotação segura de refresh tokens (1 a 30 dias).
  * @property {string} ARGON2_PEPPER - Chave secreta fixa de 64 caracteres hexadecimais para proteção contra ataques offline (OWASP).
@@ -25,6 +26,7 @@ export interface Environment {
   readonly HOST: string;
   readonly PORT: number;
   readonly DATABASE_URL: string;
+  readonly JWT_ACCESS_SECRET: string;
   readonly JWT_ACCESS_TTL: string;
   readonly JWT_REFRESH_TTL_DAYS: number;
   readonly ARGON2_PEPPER: string;
@@ -45,11 +47,15 @@ const envSchema = Joi.object<Environment>({
   DATABASE_URL: Joi.string()
     .uri({ scheme: ["postgres", "postgresql"] })
     .required(),
+  JWT_ACCESS_SECRET: Joi.string().min(32).required(),
   JWT_ACCESS_TTL: Joi.string().default("15m"),
   JWT_REFRESH_TTL_DAYS: Joi.number().integer().min(1).max(30).default(7),
   // Valida que o pepper criptográfico possui exatamente 64 caracteres hexadecimais (256 bits)
   ARGON2_PEPPER: Joi.string().hex().length(64).required(),
-  SCAN_DAEMON_ENABLED: Joi.boolean().truthy("true").falsy("false").default(true),
+  SCAN_DAEMON_ENABLED: Joi.boolean()
+    .truthy("true")
+    .falsy("false")
+    .default(true),
   SCAN_POLL_INTERVAL_MS: Joi.number().integer().min(100).default(1000),
   SCAN_CONCURRENCY: Joi.number().integer().min(1).max(32).default(4),
 }).unknown(true);
