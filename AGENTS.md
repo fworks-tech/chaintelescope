@@ -47,6 +47,7 @@ Node:
   - `src/workers/` — `TaskPool` + `tasks/{parse-feed,match-blocklist}.ts`
   - `src/ingest/` — canonicalise → sha256 → repo `insertIfAbsent` (no caller yet)
   - `src/scans/` — state machine, `runScan`, in-process `ScanDaemon`, cancellation registry; wired into `buildServer` only when a source adapter is supplied
+  - `src/auth/` — Argon2id hashing with the OWASP floor, pepper, `needsUpgrade` and the login throttle (no routes yet)
   - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
   - `src/routes/` — `health.ts` only
@@ -78,7 +79,8 @@ Python:
 
 ## Known gotchas
 
-- `ARGON2_PEPPER` is **required at boot but consumed by nothing** — there is no auth code yet.
+- `ARGON2_PEPPER` is required at boot and now consumed by `src/auth/password.ts`; no route calls it until #120. `argon2` needs its install script (`allowBuilds: argon2` in `pnpm-workspace.yaml`) — pnpm blocks it by default and `import "argon2"` then fails at load.
+- `LoginThrottle` is in-memory and per process; a second API instance has separate counters. Moving to Redis is a separate chore, noted in `docs/security/passwords.md`.
 - No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`; `apps/api/vitest.config.ts` disables file parallelism because the DB suites share one schema.
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
 - `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.

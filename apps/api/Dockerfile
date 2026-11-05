@@ -1,7 +1,9 @@
 # -----------------------------------------------------------
 # STAGE 1: Builder
 # -----------------------------------------------------------
-FROM node:20-alpine AS builder
+# Stage 1 must match the runtime's libc: argon2 ships glibc prebuilds, and an
+# alpine (musl) builder would install a binary the Debian runtime cannot load.
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 RUN npm install -g pnpm@12.6.0
