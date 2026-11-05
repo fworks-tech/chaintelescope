@@ -18,13 +18,11 @@ export interface TestDb {
 
 export function makeDb(connectionString: string): TestDb {
   const pool = new pg.Pool({ connectionString, max: 4 });
-  const connect = pool.connect.bind(pool) as () => Promise<pg.PoolClient>;
 
   let count = 0;
-  pool.connect = (() => {
+  pool.on("acquire", () => {
     count += 1;
-    return connect();
-  }) as typeof pool.connect;
+  });
 
   const db = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
 
