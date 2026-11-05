@@ -47,6 +47,7 @@ jobs:
       DATABASE_URL: postgres://postgres:ci@localhost:5432/chaintelescope_ci
       NODE_ENV: test
       ARGON2_PEPPER: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      JWT_ACCESS_SECRET: ci-only-access-secret-0123456789abcdef
     services:
       postgres:
         image: postgres:16-alpine

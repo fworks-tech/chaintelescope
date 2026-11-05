@@ -1,5 +1,6 @@
 import Hapi from "@hapi/hapi";
 import type { Server } from "@hapi/hapi";
+import { authPlugin } from "./auth/routes.js";
 import { env } from "./env.js";
 import { dbPlugin } from "./db/pool.js";
 import type { ScanRow } from "./db/schema.js";
@@ -48,6 +49,17 @@ export async function buildServer(
   server.app.scanCanceller = canceller;
 
   await server.register([dbPlugin, healthPlugin]);
+
+  await server.register({
+    plugin: authPlugin,
+    options: {
+      accessSecret: resolved.JWT_ACCESS_SECRET,
+      accessTtl: resolved.JWT_ACCESS_TTL,
+      refreshTtlDays: resolved.JWT_REFRESH_TTL_DAYS,
+      pepper: resolved.ARGON2_PEPPER,
+      secureCookie: resolved.NODE_ENV === "production",
+    },
+  });
 
   if (resolved.SCAN_DAEMON_ENABLED && options.scanSourceFor !== undefined) {
     await server.register(
