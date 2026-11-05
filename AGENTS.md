@@ -80,6 +80,7 @@ Python:
 - No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`; `apps/api/vitest.config.ts` disables file parallelism because the DB suites share one schema.
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
 - `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.
+- `kysely` is pinned to `^0.28` because 0.29+ declares `engines.node >= 22`; the repo, `.nvmrc` and CI target Node 20. Moving to Node 22 (then kysely 0.29) is a separate chore.
 - `ScansRepo.list` paginates on the tuple `(created_at, id)` — a timestamp-only cursor silently drops rows that share an instant.
 - `hapi-pino` is installed, never registered — `server.log()` output goes nowhere.
 - `apps/web` is a Vite starter template; the React surface is greenfield, not a partial port.

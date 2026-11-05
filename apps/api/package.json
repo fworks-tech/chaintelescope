@@ -19,7 +19,7 @@
     "@hapi/hapi": "^21.4.11",
     "hapi-pino": "^13.0.0",
     "joi": "^18.3.0",
-    "kysely": "^0.29.8",
+    "kysely": "^0.28.19",
     "pg": "^8.23.1"
   },
   "devDependencies": {
