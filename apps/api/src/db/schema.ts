@@ -34,7 +34,8 @@ export interface NewsItemsTable {
 export interface SnapshotsTable {
   id: Generated<string>;
   snapshot_hash: string;
-  payload: string;
+  /** `JSONB`: o `pg` devolve objeto já parseado, nunca string. */
+  payload: ColumnType<unknown, string, string>;
   created_at: Generated<Date>;
 }
 

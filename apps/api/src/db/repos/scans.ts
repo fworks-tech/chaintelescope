@@ -18,10 +18,17 @@ export interface NewScan {
   readonly requestor?: string | null;
 }
 
+export interface ScanCursor {
+  /** Instante ISO-8601 da última linha da página anterior. */
+  readonly createdAt: string;
+  /** Desempate pelo id da última linha da página anterior. */
+  readonly id: string;
+}
+
 export interface ListScansOptions {
   readonly status?: ScanStatus;
-  /** Keyset pagination: devolve scans criados antes deste instante ISO-8601. */
-  readonly cursor?: string;
+  /** Keyset pagination: retoma imediatamente após o par `(created_at, id)`. */
+  readonly cursor?: ScanCursor;
   readonly limit?: number;
 }
 
@@ -72,14 +79,27 @@ export class ScansRepo {
   }
 
   /** @param {ListScansOptions} [options] - Filtro, cursor e limite. */
-  list(options: ListScansOptions = {}): Promise<ScanRow[]> {
+  async list(options: ListScansOptions = {}): Promise<ScanRow[]> {
     let query = this.db.selectFrom("scans").selectAll();
 
     if (options.status !== undefined) {
       query = query.where("status", "=", options.status);
     }
     if (options.cursor !== undefined) {
-      query = query.where("created_at", "<", new Date(options.cursor));
+      const at = new Date(options.cursor.createdAt);
+      if (Number.isNaN(at.getTime())) {
+        throw new RangeError("cursor.createdAt is not a valid ISO-8601 instant");
+      }
+      const { id } = options.cursor;
+
+      // Comparação de tupla: sem o desempate por id, linhas com o mesmo
+      // `created_at` do cursor nunca voltam e a paginação perde registros.
+      query = query.where((eb) =>
+        eb.or([
+          eb("created_at", "<", at),
+          eb.and([eb("created_at", "=", at), eb("id", "<", id)]),
+        ]),
+      );
     }
 
     return query
@@ -119,6 +139,10 @@ export class ScansRepo {
   /**
    * Transição otimista: só atualiza se o scan estiver no estado esperado.
    *
+   * Entrar num estado terminal sela `finished_at`; sair dele (requeue) limpa
+   * `finished_at`, `content_hash` e `failure_reason`, porque os CHECKs do schema
+   * proíbem um scan pendente com campos de desfecho.
+   *
    * @param {string} id - UUID do scan.
    * @param {ScanStatus} from - Estado exigido.
    * @param {ScanStatus} to - Estado destino.
@@ -135,7 +159,17 @@ export class ScansRepo {
   ): Promise<ScanRow | undefined> {
     const values: Updateable<DB["scans"]> = { status: to };
 
-    if (TERMINAL.has(to)) values.finished_at = new Date();
+    if (TERMINAL.has(to)) {
+      values.finished_at = new Date();
+    } else {
+      // Os CHECKs de `0004_scans.sql` exigem que um scan não-terminal não
+      // carregue campos de desfecho; requeue limpa os resíduos da tentativa.
+      values.finished_at = null;
+      values.content_hash = null;
+      values.failure_reason = null;
+      if (to === "running") values.started_at = new Date();
+    }
+
     if (patch.contentHash !== undefined) values.content_hash = patch.contentHash;
     if (patch.failureReason !== undefined) {
       values.failure_reason = patch.failureReason;

@@ -5,9 +5,7 @@
 
 import type { Kysely } from "kysely";
 import type { DB } from "../schema.js";
-
-/** Resultado discriminado de uma ingestão idempotente. */
-export type IngestResult = { deduped: true } | { created: string };
+import type { IngestResult } from "../types.js";
 
 /** Item já canonicalizado e com o digest calculado pelo serviço de ingestão. */
 export interface NewNewsItem {

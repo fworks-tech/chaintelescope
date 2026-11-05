@@ -4,8 +4,8 @@
  */
 
 import { canonicalize, type JsonValue } from "@chaintelescope/shared";
-import type { IngestResult } from "../db/repos/news.js";
 import type { SnapshotsRepo } from "../db/repos/snapshots.js";
+import type { IngestResult } from "../db/types.js";
 import { digest } from "../hashing/core.js";
 
 /**

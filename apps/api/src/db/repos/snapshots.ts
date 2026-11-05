@@ -5,7 +5,7 @@
 
 import type { Kysely } from "kysely";
 import type { DB } from "../schema.js";
-import type { IngestResult } from "./news.js";
+import type { IngestResult } from "../types.js";
 
 export class SnapshotsRepo {
   constructor(private readonly db: Kysely<DB>) {}
