@@ -10,7 +10,7 @@ import {
   type LoginPayload,
   type RegisterPayload,
 } from "@chaintelescope/shared";
-import { unauthorized } from "@hapi/boom";
+import { UnauthorizedError } from "../errors/index.js";
 import type {
   Plugin,
   Request,
@@ -131,7 +131,13 @@ export const authPlugin: Plugin<AuthPluginOptions> = {
             ? await session.me(credentials.user)
             : undefined;
 
-        if (user === undefined) throw unauthorized("invalid_token", "Bearer");
+        if (user === undefined) {
+          throw new UnauthorizedError(
+            "invalid_token",
+            "Invalid or expired token",
+            "Bearer",
+          );
+        }
         return user;
       },
     });

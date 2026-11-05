@@ -48,6 +48,8 @@ Node:
   - `src/ingest/` — canonicalise → sha256 → repo `insertIfAbsent` (no caller yet)
   - `src/scans/` — state machine, `runScan`, in-process `ScanDaemon`, cancellation registry; wired into `buildServer` only when a source adapter is supplied
   - `src/auth/` — Argon2id + pepper, login throttle, JWT access tokens (`@hapi/jwt`), opaque refresh tokens with rotation/reuse detection, scheme + `/auth/*` routes
+  - `src/errors/` — domain errors (`NotFoundError`, `ConflictError`, ..., stable `code`) built on Boom
+  - `src/plugins/` — `validation.ts` (Joi + 422 `failAction`) and `errors.ts` (single error envelope, 500 opacity, 503 when `server.app.degraded`)
   - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets,auth}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
   - `src/routes/` — `health.ts` only
@@ -85,6 +87,8 @@ Python:
 - `GET /auth/me` and the `jwt` strategy exist, but there is no admin route yet (`/admin/*` lands in #122). Scope enforcement is proven in `test/auth-session.test.ts` with a test-registered route.
 - No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`; `apps/api/vitest.config.ts` disables file parallelism because the DB suites share one schema.
 - `apps/api/src/plugins/validation.ts` sets Joi as Hapi's validator and the global `failAction`: a Joi schema error is 422 with `{ path, type }` details only, while unparseable JSON is 400 from Hapi's parser before the schema runs. Auth routes use `RegisterPayloadSchema`/`LoginPayloadSchema`; `CreateScanPayloadSchema` waits for #122.
+- Every error leaves through `plugins/errors.ts` as `{ error: { code, message, requestId }, details? }`. Domain errors carry stable codes (`duplicate_email`, `no_token`, `insufficient_scope`, `semantic_validation`, ...); Hapi/framework Boom errors map by status. A non-Boom throw is 500 with a generic message and a `request.log` entry tagged `internal`. 2xx bodies are untouched.
+- `server.app.degraded = true` short-circuits every request to 503 `db_pool_saturated` + `Retry-After: 5`; the pool probe that sets it lands in M5-I24.
 - Schema and TypeScript type are bound by `Joi.object<T, true>` (strict key map), not generated: a missing/extra key or wrong schema kind fails typecheck. There is no `shared:types` codegen step, deliberately (Joi 18 supports `StandardSchemaV1`, and `joi-to-typescript` still peers on Joi 17).
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
 - `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.
@@ -95,7 +99,7 @@ Python:
 - `scans.asset_symbol` has no FK to `assets` on purpose: scans outlive the asset registry, and #114's coverage query is what surfaces orphaned symbols.
 - `kysely` is pinned to `^0.28` because 0.29+ declares `engines.node >= 22`; the repo, `.nvmrc` and CI target Node 20. Moving to Node 22 (then kysely 0.29) is a separate chore.
 - `ScansRepo.list` paginates on the tuple `(created_at, id)` — a timestamp-only cursor silently drops rows that share an instant.
-- `hapi-pino` is installed, never registered — `server.log()` output goes nowhere.
+- `hapi-pino` is registered in `buildServer` (`silent` in tests); it redacts `authorization`, `cookie` and `set-cookie`. `request.log` reaches the destination from there.
 - `apps/web` is a Vite starter template; the React surface is greenfield, not a partial port.
 - The bench deliberately measures caller-observed lag; its printed conclusion does not match its own numbers (pool p99 is worse than main thread). Fix the methodology before quoting it.
 - `.pre-commit-config.yaml` and `.devcontainer/` no longer exist; `scripts/pr-skill.py` remains the PR helper.

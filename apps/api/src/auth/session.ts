@@ -6,11 +6,11 @@
 
 import { randomUUID } from "node:crypto";
 import {
-  badRequest,
-  conflict,
-  tooManyRequests,
-  unauthorized,
-} from "@hapi/boom";
+  BadRequestError,
+  ConflictError,
+  TooManyRequestsError,
+  UnauthorizedError,
+} from "../errors/index.js";
 import { AuthRepo, type UserRow } from "../db/repos/auth.js";
 import {
   hashPassword,
@@ -93,7 +93,7 @@ export class AuthSession {
   async register(input: RegisterInput): Promise<PublicUser> {
     const email = normaliseEmail(input.email);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw badRequest("invalid_email");
+      throw new BadRequestError("invalid_email", "Invalid e-mail address");
     }
     this.#assertPasswordPolicy(input.password, email);
 
@@ -102,7 +102,9 @@ export class AuthSession {
       passwordHash: await hashPassword(input.password, this.#options.pepper),
     });
 
-    if (user === undefined) throw conflict("duplicate_email");
+    if (user === undefined) {
+      throw new ConflictError("duplicate_email", "E-mail already registered");
+    }
     return publicUser(user);
   }
 
@@ -123,7 +125,10 @@ export class AuthSession {
     if (user === undefined || !passwordMatches) {
       this.#throttle.recordFailure(`email:${email}`);
       this.#throttle.recordFailure(`ip:${input.ip}`);
-      throw unauthorized("invalid_credentials");
+      throw new UnauthorizedError(
+        "invalid_credentials",
+        "Invalid e-mail or password",
+      );
     }
 
     this.#throttle.reset(`email:${email}`);
@@ -141,7 +146,10 @@ export class AuthSession {
 
   async refresh(token: string | undefined): Promise<IssuedSession> {
     if (token === undefined || token.length === 0) {
-      throw unauthorized("missing_refresh_token");
+      throw new UnauthorizedError(
+        "missing_refresh_token",
+        "Refresh token cookie is missing",
+      );
     }
 
     const next = newRefreshToken();
@@ -157,14 +165,25 @@ export class AuthSession {
 
     if (result.kind === "reused") {
       this.#log("refresh_token_reuse", { familyId: result.familyId });
-      throw unauthorized("refresh_token_reuse");
+      throw new UnauthorizedError(
+        "refresh_token_reuse",
+        "Refresh token reuse detected",
+      );
     }
     if (result.kind === "invalid") {
-      throw unauthorized("invalid_refresh_token");
+      throw new UnauthorizedError(
+        "invalid_refresh_token",
+        "Refresh token is invalid or expired",
+      );
     }
 
     const user = await this.#repo.userById(result.userId);
-    if (user === undefined) throw unauthorized("invalid_refresh_token");
+    if (user === undefined) {
+      throw new UnauthorizedError(
+        "invalid_refresh_token",
+        "Refresh token is invalid or expired",
+      );
+    }
 
     const access = signAccessToken(
       user.id,
@@ -228,20 +247,32 @@ export class AuthSession {
     );
     if (seconds === 0) return;
 
-    const error = tooManyRequests("too_many_attempts");
-    error.output.headers["retry-after"] = String(seconds);
+    const error = new TooManyRequestsError(
+      "too_many_attempts",
+      "Too many login attempts",
+      seconds,
+    );
     throw error;
   }
 
   #assertPasswordPolicy(password: string, email: string): void {
     if (password.length < MIN_PASSWORD_LENGTH) {
-      throw badRequest("password_too_short");
+      throw new BadRequestError(
+        "password_too_short",
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      );
     }
     if (password.length > MAX_PASSWORD_LENGTH) {
-      throw badRequest("password_too_long");
+      throw new BadRequestError(
+        "password_too_long",
+        `Password must be at most ${MAX_PASSWORD_LENGTH} characters`,
+      );
     }
     if (password.toLowerCase() === email.split("@")[0]?.toLowerCase()) {
-      throw badRequest("password_matches_email");
+      throw new BadRequestError(
+        "password_matches_email",
+        "Password must not match the e-mail address",
+      );
     }
   }
 }

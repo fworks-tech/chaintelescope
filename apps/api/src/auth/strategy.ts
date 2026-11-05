@@ -5,8 +5,8 @@
  * @module api/auth/strategy
  */
 
-import { unauthorized } from "@hapi/boom";
 import type { ServerAuthScheme } from "@hapi/hapi";
+import { UnauthorizedError } from "../errors/index.js";
 import { verifyAccessToken } from "./tokens.js";
 
 export interface TokenStrategyOptions {
@@ -24,7 +24,11 @@ export const tokenStrategy: ServerAuthScheme<TokenStrategyOptions> = (
     authenticate: async (request, h) => {
       const header = request.headers.authorization;
       if (typeof header !== "string" || !header.startsWith("Bearer ")) {
-        throw unauthorized(null, "Bearer");
+        throw new UnauthorizedError(
+          "no_token",
+          "Missing authentication",
+          "Bearer",
+        );
       }
 
       try {
@@ -34,7 +38,11 @@ export const tokenStrategy: ServerAuthScheme<TokenStrategyOptions> = (
         });
       } catch {
         // Assinatura inválida/expirada é 401, nunca 403: não há identidade.
-        throw unauthorized("invalid_token", "Bearer");
+        throw new UnauthorizedError(
+          "invalid_token",
+          "Invalid or expired token",
+          "Bearer",
+        );
       }
     },
   };

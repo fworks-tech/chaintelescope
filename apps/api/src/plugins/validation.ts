@@ -4,9 +4,9 @@
  * @module api/plugins/validation
  */
 
-import { Boom } from "@hapi/boom";
 import type { Plugin, Request, ResponseToolkit, Server } from "@hapi/hapi";
 import Joi from "joi";
+import { ValidationError } from "../errors/index.js";
 
 /**
  * Erro de schema é 422: o corpo foi parseado, mas não é processável. JSON
@@ -26,10 +26,8 @@ export const failAction = (
     type: detail.type,
   }));
 
-  const error = new Boom("Payload validation failed", { statusCode: 422 });
   // Só `path` e `type`: mensagens do Joi podem vazar o schema.
-  error.output.payload.details = details;
-  throw error;
+  throw new ValidationError("Payload validation failed", details);
 };
 
 export const validationPlugin: Plugin<void> = {
