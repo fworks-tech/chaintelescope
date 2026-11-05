@@ -59,10 +59,12 @@ describe("Joi validation pipeline", () => {
 
     expect(response.statusCode).toBe(422);
     const body = response.result as {
-      message: string;
+      error: { code: string; message: string; requestId: string };
       details: Array<{ path: string; type: string }>;
     };
-    expect(body.message).toBe("Payload validation failed");
+    expect(body.error.code).toBe("semantic_validation");
+    expect(body.error.message).toBe("Payload validation failed");
+    expect(body.error.requestId).toBeTypeOf("string");
     expect(body.details).toEqual([{ path: "kind", type: "any.only" }]);
     expect(response.payload).not.toContain("Joi");
   });

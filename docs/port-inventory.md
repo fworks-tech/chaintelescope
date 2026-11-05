@@ -29,7 +29,7 @@ Status legend:
 | `src/data/alerts/rules.py` | alert evaluation | `pending` | — |
 | `src/data/newsletter/store.py` | Postgres table | `pending` | JSON-file store still the only implementation. |
 | `src/data/newsletter/delivery.py` | delivery provider | `pending` | — |
-| `src/logging.py` | `apps/api` logger | `pending` | `hapi-pino` is installed but no plugin registers it. |
+| `src/logging.py` | `apps/api/src/server.ts` (hapi-pino) | `ported` | JSON logs via pino; `authorization`, `cookie` and `set-cookie` redacted; silent in tests |
 | `src/validation/email.py` | `packages/shared/src/validation.ts` | `ported` | Joi contracts for auth and scan payloads, bound to TS types by `Joi.object<T, true>`; Hapi applies them with a 422 `failAction` |
 | `src/__init__.py`, `src/components/__init__.py`, `src/data/__init__.py`, `src/validation/__init__.py` | — | `dropped` | Python package markers; no equivalent needed. |
 

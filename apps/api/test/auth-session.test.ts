@@ -118,7 +118,7 @@ describe.skipIf(!DATABASE_URL)("auth routes", () => {
 
     const duplicate = await register("user@example.com");
     expect(duplicate.statusCode).toBe(409);
-    expect((duplicate.result as { message: string }).message).toBe(
+    expect((duplicate.result as { error: { code: string } }).error.code).toBe(
       "duplicate_email",
     );
   });
@@ -127,7 +127,7 @@ describe.skipIf(!DATABASE_URL)("auth routes", () => {
     const tooShort = await register("short@example.com", "short");
 
     expect(tooShort.statusCode).toBe(400);
-    expect((tooShort.result as { message: string }).message).toBe(
+    expect((tooShort.result as { error: { code: string } }).error.code).toBe(
       "password_too_short",
     );
   });
@@ -140,8 +140,8 @@ describe.skipIf(!DATABASE_URL)("auth routes", () => {
 
     expect(unknown.statusCode).toBe(401);
     expect(wrong.statusCode).toBe(401);
-    expect((unknown.body as { message?: string }).message).toBe(
-      (wrong.body as { message?: string }).message,
+    expect((unknown.body as { error: { code: string } }).error.code).toBe(
+      (wrong.body as { error: { code: string } }).error.code,
     );
   });
 
@@ -213,6 +213,9 @@ describe.skipIf(!DATABASE_URL)("auth routes", () => {
     const missing = await server.inject({ method: "GET", url: "/auth/me" });
     expect(missing.statusCode).toBe(401);
     expect(missing.headers["www-authenticate"]).toBe("Bearer");
+    expect((missing.result as { error: { code: string } }).error.code).toBe(
+      "no_token",
+    );
 
     const tampered = `${accessToken.slice(0, -1)}${accessToken.endsWith("a") ? "b" : "a"}`;
     const invalid = await server.inject({
@@ -242,6 +245,9 @@ describe.skipIf(!DATABASE_URL)("auth routes", () => {
     });
 
     expect(response.statusCode).toBe(403);
+    expect((response.result as { error: { code: string } }).error.code).toBe(
+      "insufficient_scope",
+    );
   });
 
   test("refresh rotates the token and stores only its sha256", async () => {

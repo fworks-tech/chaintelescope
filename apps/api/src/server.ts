@@ -1,8 +1,10 @@
 import Hapi from "@hapi/hapi";
 import type { Server } from "@hapi/hapi";
+import HapiPino from "hapi-pino";
 import { authPlugin } from "./auth/routes.js";
 import { env } from "./env.js";
 import { dbPlugin } from "./db/pool.js";
+import { errorsPlugin } from "./plugins/errors.js";
 import { failAction, validationPlugin } from "./plugins/validation.js";
 import type { ScanRow } from "./db/schema.js";
 import { healthPlugin } from "./routes/health.js";
@@ -50,6 +52,19 @@ export async function buildServer(
   const canceller = new ScanCanceller();
   server.app.scanCanceller = canceller;
 
+  await server.register({
+    plugin: HapiPino,
+    options: {
+      level: resolved.NODE_ENV === "test" ? "silent" : "info",
+      // Tokens e cookies nunca entram no log, nem em nível debug.
+      redact: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        'res.headers["set-cookie"]',
+      ],
+    },
+  });
+
   await server.register([validationPlugin, dbPlugin, healthPlugin]);
 
   await server.register({
@@ -62,6 +77,9 @@ export async function buildServer(
       secureCookie: resolved.NODE_ENV === "production",
     },
   });
+
+  // Último: o envelope de erro envolve as respostas de todas as rotas.
+  await server.register(errorsPlugin);
 
   if (resolved.SCAN_DAEMON_ENABLED && options.scanSourceFor !== undefined) {
     await server.register(
