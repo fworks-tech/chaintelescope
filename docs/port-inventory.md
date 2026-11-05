@@ -43,5 +43,5 @@ Status legend:
 | Ingestion | `apps/api/src/ingest/{news,snapshot}.ts` | `partial` — repo-backed, news + snapshot dedupe integration-tested; no caller |
 | Scan jobs | `apps/api/src/scans/{state-machine,orchestrator,daemon,cancellation,plugin}.ts` | `partial` — state machine, retry, reconcile and cancellation integration-tested; the daemon only registers when a source adapter is supplied, and none exists yet |
 | HTTP | `apps/api/src/routes/health.ts` | `ported` (1 route) |
-| DB access | `apps/api/src/db/{schema,tx,chunks,pool,migrate}.ts`, `db/repos/*` + `migrations/*.sql` | `ported` — typed `DB`, `withTx`, repositories and schema tests; analytics SQL is #114 |
+| DB access | `apps/api/src/db/{schema,tx,chunks,pool,migrate,analytics}.ts`, `db/repos/*`, `migrations/*.sql` e `apps/api/sql/*.sql` | `ported` — typed `DB`, `withTx`, repositories, fixture-tested analytics queries and schema tests |
 | Auth | — | nothing beyond the `ARGON2_PEPPER`/JWT env contract |

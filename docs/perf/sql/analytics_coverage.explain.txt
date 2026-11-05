@@ -1,0 +1,50 @@
+-- fixture: 10,000 scans / 50 FX symbols / 9,000 matches, postgres:16-alpine
+-- evidence only, not a CI gate: the planner may legitimately choose another plan.
+-- the test suite asserts that scans_asset_symbol_idx exists.
+
+Sort  (cost=731.85..732.35 rows=200 width=80) (actual time=9.512..9.524 rows=162 loops=1)
+  Sort Key: (COALESCE(((count(*) FILTER (WHERE (sc.status <> 'running'::text)))::integer), 0)) DESC, (COALESCE(a.symbol, sc.asset_symbol))
+  Sort Method: quicksort  Memory: 35kB
+  Buffers: shared hit=373
+  ->  Hash Left Join  (cost=718.64..724.21 rows=200 width=80) (actual time=9.305..9.392 rows=162 loops=1)
+        Hash Cond: (COALESCE(a.symbol, sc.asset_symbol) = m.symbol)
+        Buffers: shared hit=373
+        ->  Hash Full Join  (cost=279.33..284.37 rows=200 width=80) (actual time=3.297..3.357 rows=162 loops=1)
+              Hash Cond: (sc.asset_symbol = a.symbol)
+              Buffers: shared hit=154
+              ->  HashAggregate  (cost=272.83..277.33 rows=200 width=44) (actual time=3.222..3.253 rows=50 loops=1)
+                    Group Key: sc.asset_symbol
+                    Batches: 1  Memory Usage: 48kB
+                    Buffers: shared hit=152
+                    ->  Seq Scan on scans sc  (cost=0.00..196.08 rows=4386 width=68) (actual time=0.003..1.214 rows=10000 loops=1)
+                          Filter: (asset_symbol IS NOT NULL)
+                          Buffers: shared hit=152
+              ->  Hash  (cost=4.00..4.00 rows=200 width=36) (actual time=0.055..0.057 rows=162 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 15kB
+                    Buffers: shared hit=2
+                    ->  Seq Scan on assets a  (cost=0.00..4.00 rows=200 width=36) (actual time=0.010..0.023 rows=162 loops=1)
+                          Buffers: shared hit=2
+        ->  Hash  (cost=436.80..436.80 rows=200 width=36) (actual time=5.978..5.980 rows=45 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 10kB
+              Buffers: shared hit=219
+              ->  Subquery Scan on m  (cost=432.30..436.80 rows=200 width=36) (actual time=5.895..5.906 rows=45 loops=1)
+                    Buffers: shared hit=219
+                    ->  HashAggregate  (cost=432.30..434.80 rows=200 width=36) (actual time=5.894..5.901 rows=45 loops=1)
+                          Group Key: sc_1.asset_symbol
+                          Batches: 1  Memory Usage: 40kB
+                          Buffers: shared hit=219
+                          ->  Hash Join  (cost=250.90..399.97 rows=6467 width=64) (actual time=2.882..4.736 rows=9000 loops=1)
+                                Hash Cond: (sm.scan_id = sc_1.id)
+                                Buffers: shared hit=219
+                                ->  Seq Scan on scan_matches sm  (cost=0.00..131.99 rows=6499 width=48) (actual time=0.006..0.512 rows=9000 loops=1)
+                                      Buffers: shared hit=67
+                                ->  Hash  (cost=196.08..196.08 rows=4386 width=48) (actual time=2.807..2.808 rows=10000 loops=1)
+                                      Buckets: 16384 (originally 8192)  Batches: 1 (originally 1)  Memory Usage: 654kB
+                                      Buffers: shared hit=152
+                                      ->  Seq Scan on scans sc_1  (cost=0.00..196.08 rows=4386 width=48) (actual time=0.003..1.116 rows=10000 loops=1)
+                                            Filter: (asset_symbol IS NOT NULL)
+                                            Buffers: shared hit=152
+Planning:
+  Buffers: shared hit=2
+Planning Time: 0.636 ms
+Execution Time: 10.210 ms
