@@ -20,7 +20,9 @@ export function loadDatabaseUrl(
     DATABASE_URL: Joi.string()
       .uri({ scheme: ["postgres", "postgresql"] })
       .required(),
-  }).validate(inputEnv, { abortEarly: false });
+  })
+    .unknown(true)
+    .validate(inputEnv, { abortEarly: false });
 
   if (error) {
     const errorDetails = error.details.map((d) => d.message).join(", ");
