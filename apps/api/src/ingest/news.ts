@@ -4,7 +4,10 @@
  */
 
 import { canonicalize, type JsonValue } from "@chaintelescope/shared";
+import type { IngestResult, NewsRepo } from "../db/repos/news.js";
 import { digest } from "../hashing/core.js";
+
+export type { IngestResult };
 
 /**
  * Payload bruto de um item de notícia recebido de fontes externas (feeds RSS/Atom).
@@ -31,49 +34,20 @@ export interface RawNewsItem {
 }
 
 /**
- * Representação da tupla retornada pela tabela `news_items` no PostgreSQL.
- */
-export interface NewsRow {
-  /** Identificador primário UUID persistido no banco. */
-  readonly id: string;
-  /** Hash SHA-256 canônico utilizado como chave de unicidade. */
-  readonly content_hash: string;
-}
-
-/**
- * Contrato mínimo para abstração de consultas SQL no cliente de banco de dados.
- */
-export interface IngestContext {
-  /**
-   * Executa uma consulta parametrizada contra o banco de dados.
-   * @template T - Tipo estrutural das linhas retornadas.
-   * @param {string} sql - Comando SQL com marcadores dimensionados ($1, $2, etc.).
-   * @param {unknown[]} [params] - Vetor de parâmetros de substituição limpos de injeção SQL.
-   * @returns {Promise<{ rows: T[] }>} Objeto contendo o conjunto de tuplas retornadas.
-   */
-  query<T = unknown>(sql: string, params?: unknown[]): Promise<{ rows: T[] }>;
-}
-
-/**
- * Resultado discriminado da operação de ingestão de notícias.
- */
-export type IngestResult = { deduped: true } | { created: string };
-
-/**
  * Processa a ingestão de um item de notícia de forma idempotente.
  *
  * **Princípio de Arquitetura:**
  * 1. Isola os campos invariantes do domínio (`title`, `url`, `publishedAt`), descartando metadados efêmeros.
  * 2. Serializa a estrutura canônica (RFC 8785) e calcula seu digest SHA-256.
- * 3. Executa a inserção atômica via `ON CONFLICT (content_hash) DO NOTHING`.
+ * 3. Delega a escrita ao repositório, que executa `ON CONFLICT (content_hash) DO NOTHING`.
  *
  * @param {RawNewsItem} item - Item bruto recebido do coletor.
- * @param {IngestContext} ctx - Contexto de banco de dados para execução da transação/query.
+ * @param {NewsRepo} repo - Repositório de notícias (raiz ou transação).
  * @returns {Promise<IngestResult>} Indica se o item foi deduplicado ou criado com seu respectivo ID.
  */
 export async function ingestNewsItem(
   item: RawNewsItem,
-  ctx: IngestContext,
+  repo: NewsRepo,
 ): Promise<IngestResult> {
   // Constrói o pre-image canônico estritamente com campos imutáveis de negócio
   const canonicalPayload: JsonValue = {
@@ -85,26 +59,11 @@ export async function ingestNewsItem(
   const canonicalBytes = canonicalize(canonicalPayload);
   const contentHash = (await digest(canonicalBytes, "sha256")).hex;
 
-  // A cláusula ON CONFLICT evita bloqueios distribuídos e garante unicidade atômica no banco de dados
-  const res = await ctx.query<NewsRow>(
-    `INSERT INTO news_items (title, url, published_at, content_hash, canonical_payload)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (content_hash) DO NOTHING
-     RETURNING id, content_hash`,
-    [
-      item.title,
-      item.url,
-      item.publishedAt,
-      contentHash,
-      canonicalBytes.toString("utf8"),
-    ],
-  );
-
-  const inserted = res.rows[0];
-  if (!inserted) {
-    // 0 linhas retornadas indicam que o hash já existia no índice único
-    return { deduped: true };
-  }
-
-  return { created: inserted.id };
+  return repo.insertIfAbsent({
+    title: item.title,
+    url: item.url,
+    publishedAt: item.publishedAt,
+    contentHash,
+    canonicalPayload: canonicalBytes.toString("utf8"),
+  });
 }

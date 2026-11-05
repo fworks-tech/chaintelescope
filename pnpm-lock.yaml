@@ -175,21 +175,24 @@ importers:
 
   apps/api:
     dependencies:
+      '@chaintelescope/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@hapi/boom':
         specifier: ^10.0.1
         version: 10.0.1
       '@hapi/hapi':
         specifier: ^21.4.11
         version: 21.4.11
-      '@chaintelescope/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       hapi-pino:
         specifier: ^13.0.0
         version: 13.0.0
       joi:
         specifier: ^18.3.0
         version: 18.3.0
+      kysely:
+        specifier: ^0.29.8
+        version: 0.29.8
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -701,6 +704,10 @@ packages:
   joi@18.3.0:
     resolution: {integrity: sha512-/RwAK4BAfzcdbdFg073tzq4/xhY6Q7lMd5AmjqTL6pu0QFJdEmtswgm8BvgwXvOKuPNYQ8XrdQrrW/gF65LiNw==}
     engines: {node: '>= 20'}
+
+  kysely@0.29.8:
+    resolution: {integrity: sha512-ixHU1H4R+LeC5Y0nAhYgiGRFpFRHm2DXKEmJSs/vbes9sKXyssyzxzE/NYiOJX5fY0BL28biCre3GqlCqUwyXQ==}
+    engines: {node: '>=22.0.0'}
 
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
@@ -1435,6 +1442,8 @@ snapshots:
       '@hapi/tlds': 1.1.7
       '@hapi/topo': 6.0.2
       '@standard-schema/spec': 1.1.0
+
+  kysely@0.29.8: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true

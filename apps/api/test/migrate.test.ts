@@ -4,21 +4,23 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import pg from "pg";
 import { migrate } from "../src/db/migrate.js";
+import { NewsRepo } from "../src/db/repos/news.js";
 import { ingestNewsItem } from "../src/ingest/news.js";
+import { makeDb } from "./helpers/db.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
 describe.skipIf(!DATABASE_URL)("migrations against a real database", () => {
-  const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
+  const handle = makeDb(DATABASE_URL ?? "");
+  const pool = handle.pool;
 
   beforeAll(async () => {
     await migrate(pool, "up");
   });
 
   afterAll(async () => {
-    await pool.end();
+    await handle.destroy();
   });
 
   test("creates the v1 schema", async () => {
@@ -79,8 +81,8 @@ describe.skipIf(!DATABASE_URL)("migrations against a real database", () => {
       publishedAt: "2026-11-05T00:00:00.000Z",
     };
 
-    const first = await ingestNewsItem(item, pool);
-    const second = await ingestNewsItem(item, pool);
+    const first = await ingestNewsItem(item, new NewsRepo(handle.db));
+    const second = await ingestNewsItem(item, new NewsRepo(handle.db));
 
     expect(first).toHaveProperty("created");
     expect(second).toEqual({ deduped: true });

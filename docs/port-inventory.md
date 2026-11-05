@@ -24,7 +24,7 @@ Status legend:
 | `src/data/market/service.py` (fallback chain) | `apps/api` provider port | `pending` | No provider abstraction in Node. |
 | `src/data/market/ccxt_adapter.py` | provider adapter | `pending` | Python uses `ccxt`; Node has no adapter. |
 | `src/data/market/config.py`, `models.py`, `mock_market.py` | provider config/fixtures | `pending` | — |
-| `src/data/news/ingestion.py` | `apps/api/src/ingest/news.ts` | `partial` | Canonical hashing and `INSERT ... ON CONFLICT` exist and now have a real table, but no route or scheduler calls them and the fetch/parse stage is unwritten. |
+| `src/data/news/ingestion.py` | `apps/api/src/ingest/news.ts` | `partial` | Canonical hashing and repo-backed `ON CONFLICT (content_hash) DO NOTHING` exist and are integration-tested, but no route or scheduler calls them and the fetch/parse stage is unwritten. |
 | `src/data/news/models.py` | `apps/api/src/ingest/news.ts` types | `partial` | `RawNewsItem`/`NewsRow` mirrored; no fetch pipeline. |
 | `src/data/alerts/rules.py` | alert evaluation | `pending` | — |
 | `src/data/newsletter/store.py` | Postgres table | `pending` | JSON-file store still the only implementation. |
@@ -40,7 +40,7 @@ Status legend:
 | Hashing | `apps/api/src/hashing/{core,sink,progress,scan-pipeline,algorithms}.ts` | `ported`, unit-tested |
 | Workers | `apps/api/src/workers/{pool,worker-runner,tasks/*}.ts` | `ported`, unit-tested; benchmark in `bench/` needs a methodology fix |
 | Canonicalisation | `packages/shared/src/{canonical,hash}.ts` | `ported`, unit-tested |
-| Ingestion | `apps/api/src/ingest/{news,snapshot}.ts` | `partial` — no table, no caller |
+| Ingestion | `apps/api/src/ingest/{news,snapshot}.ts` | `partial` — repo-backed and integration-tested; no caller |
 | HTTP | `apps/api/src/routes/health.ts` | `ported` (1 route) |
-| DB access | `apps/api/src/db/{pool,migrate}.ts` + `migrations/*.sql` | `ported` — schema and runner exist; repositories land in #113 |
+| DB access | `apps/api/src/db/{schema,tx,chunks,pool,migrate}.ts`, `db/repos/*` + `migrations/*.sql` | `ported` — typed `DB`, `withTx`, repositories and schema tests; analytics SQL is #114 |
 | Auth | — | nothing beyond the `ARGON2_PEPPER`/JWT env contract |

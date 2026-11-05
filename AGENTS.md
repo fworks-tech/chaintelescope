@@ -45,8 +45,8 @@ Node:
 - `apps/api` — Hapi.js server (`src/main.ts` entry, `src/server.ts` builder, `src/env.ts` Joi-validated env)
   - `src/hashing/` — `digest`, streaming `scanStream`, `CountingSink`, `ProgressTransform`
   - `src/workers/` — `TaskPool` + `tasks/{parse-feed,match-blocklist}.ts`
-  - `src/ingest/` — canonicalise → sha256 → `INSERT ... ON CONFLICT` (no caller, no table yet)
-  - `src/db/pool.ts` — `pg.Pool` plugin decorated as `server.db` (zero queries issued)
+  - `src/ingest/` — canonicalise → sha256 → repo `insertIfAbsent` (no caller yet)
+  - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,news,snapshots,assets}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`
   - `src/routes/` — `health.ts` only
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
 - `packages/shared` — runtime-free contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`
@@ -77,8 +77,9 @@ Python:
 ## Known gotchas
 
 - `ARGON2_PEPPER` is **required at boot but consumed by nothing** — there is no auth code yet.
-- No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`.
-- `apps/api/src/ingest/*` compiles and has unit-level behaviour, but no route calls it yet.
+- No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`; `apps/api/vitest.config.ts` disables file parallelism because the DB suites share one schema.
+- SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
+- `apps/api/src/ingest/*` compiles and is exercised by `test/repos.test.ts`, but no route calls it yet.
 - `hapi-pino` is installed, never registered — `server.log()` output goes nowhere.
 - `apps/web` is a Vite starter template; the React surface is greenfield, not a partial port.
 - The bench deliberately measures caller-observed lag; its printed conclusion does not match its own numbers (pool p99 is worse than main thread). Fix the methodology before quoting it.
