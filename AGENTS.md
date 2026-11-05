@@ -47,7 +47,8 @@ Node:
   - `src/workers/` — `TaskPool` + `tasks/{parse-feed,match-blocklist}.ts`
   - `src/ingest/` — canonicalise → sha256 → repo `insertIfAbsent` (no caller yet)
   - `src/scans/` — state machine, `runScan`, in-process `ScanDaemon`, cancellation registry; wired into `buildServer` only when a source adapter is supplied
-  - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`
+  - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
+  - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
   - `src/routes/` — `health.ts` only
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
 - `packages/shared` — runtime-free contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`
@@ -82,6 +83,7 @@ Python:
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
 - `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.
 - `apps/api/src/scans/*` compiles and has database coverage, but nothing claims a scan in production yet: `buildServer` only registers the daemon when `scanSourceFor` is supplied, and no fetcher exists for `feed`/`snapshot`. Uploads get their digest in the route (#122), not the daemon.
+- The analytics SQL lives in `apps/api/sql/` and is read at runtime by `src/db/analytics.ts` (`../../sql/` resolves from both `src/db` and `dist/db`). `apps/api/package.json` whitelists `dist` and `sql` under `files`, which is what makes `pnpm deploy` (and the Docker image) ship the queries — dropping that field breaks analytics in production only.
 - `ScanDaemon.start()` runs the boot reconciliation (`UPDATE scans SET status='failed', failure_reason='startup_reconciliation' WHERE status='running'`) before the first tick. It is single-node: starting a second instance marks the first instance's in-flight rows failed.
 - The app-level transition table lives in `src/scans/state-machine.ts` and is enforced by `ScansRepo.transition`; the database only enforces the terminal-field CHECKs. `failed -> pending` is a legal edge (retry) even though the #111 sketch omitted it.
 - `scans.asset_symbol` has no FK to `assets` on purpose: scans outlive the asset registry, and #114's coverage query is what surfaces orphaned symbols.
