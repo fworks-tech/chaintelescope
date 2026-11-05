@@ -16,6 +16,9 @@ import Joi from "joi";
  * @property {string} JWT_ACCESS_TTL - Janela de expiração temporal para tokens de acesso de curta duração (ex.: '15m').
  * @property {number} JWT_REFRESH_TTL_DAYS - Tempo de vida em dias para rotação segura de refresh tokens (1 a 30 dias).
  * @property {string} ARGON2_PEPPER - Chave secreta fixa de 64 caracteres hexadecimais para proteção contra ataques offline (OWASP).
+ * @property {boolean} SCAN_DAEMON_ENABLED - Liga o poller in-process de scans.
+ * @property {number} SCAN_POLL_INTERVAL_MS - Intervalo entre ticks do poller.
+ * @property {number} SCAN_CONCURRENCY - Scans executados simultaneamente por processo.
  */
 export interface Environment {
   readonly NODE_ENV: "development" | "test" | "production";
@@ -25,6 +28,9 @@ export interface Environment {
   readonly JWT_ACCESS_TTL: string;
   readonly JWT_REFRESH_TTL_DAYS: number;
   readonly ARGON2_PEPPER: string;
+  readonly SCAN_DAEMON_ENABLED: boolean;
+  readonly SCAN_POLL_INTERVAL_MS: number;
+  readonly SCAN_CONCURRENCY: number;
 }
 
 /**
@@ -43,6 +49,9 @@ const envSchema = Joi.object<Environment>({
   JWT_REFRESH_TTL_DAYS: Joi.number().integer().min(1).max(30).default(7),
   // Valida que o pepper criptográfico possui exatamente 64 caracteres hexadecimais (256 bits)
   ARGON2_PEPPER: Joi.string().hex().length(64).required(),
+  SCAN_DAEMON_ENABLED: Joi.boolean().truthy("true").falsy("false").default(true),
+  SCAN_POLL_INTERVAL_MS: Joi.number().integer().min(100).default(1000),
+  SCAN_CONCURRENCY: Joi.number().integer().min(1).max(32).default(4),
 }).unknown(true);
 
 /**

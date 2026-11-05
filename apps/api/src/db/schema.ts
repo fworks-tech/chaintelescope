@@ -65,6 +65,9 @@ export interface ScansTable {
   digest_alg: Generated<string>;
   content_hash: string | null;
   failure_reason: string | null;
+  /** Sem FK: o scan sobrevive à remoção do asset (ver `0007`). */
+  asset_symbol: string | null;
+  duration_ms: number | null;
   created_at: Generated<Date>;
   started_at: Timestamp | null;
   finished_at: Timestamp | null;

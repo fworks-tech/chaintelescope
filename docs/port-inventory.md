@@ -41,6 +41,7 @@ Status legend:
 | Workers | `apps/api/src/workers/{pool,worker-runner,tasks/*}.ts` | `ported`, unit-tested; benchmark in `bench/` needs a methodology fix |
 | Canonicalisation | `packages/shared/src/{canonical,hash}.ts` | `ported`, unit-tested |
 | Ingestion | `apps/api/src/ingest/{news,snapshot}.ts` | `partial` — repo-backed, news + snapshot dedupe integration-tested; no caller |
+| Scan jobs | `apps/api/src/scans/{state-machine,orchestrator,daemon,cancellation,plugin}.ts` | `partial` — state machine, retry, reconcile and cancellation integration-tested; the daemon only registers when a source adapter is supplied, and none exists yet |
 | HTTP | `apps/api/src/routes/health.ts` | `ported` (1 route) |
 | DB access | `apps/api/src/db/{schema,tx,chunks,pool,migrate}.ts`, `db/repos/*` + `migrations/*.sql` | `ported` — typed `DB`, `withTx`, repositories and schema tests; analytics SQL is #114 |
 | Auth | — | nothing beyond the `ARGON2_PEPPER`/JWT env contract |
