@@ -99,8 +99,9 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
   test("transition only applies from the expected state", async () => {
     const scan = await scans.create({ kind: "upload" });
     const hash = "a".repeat(64);
+    await scans.claimBatch(1);
 
-    const completed = await scans.transition(scan.id, "pending", "completed", {
+    const completed = await scans.transition(scan.id, "running", "completed", {
       contentHash: hash,
     });
     expect(completed).toMatchObject({
@@ -111,7 +112,7 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
     expect(completed?.finished_at).toBeInstanceOf(Date);
 
     expect(
-      await scans.transition(scan.id, "pending", "failed", {
+      await scans.transition(scan.id, "running", "failed", {
         failureReason: "late",
       }),
     ).toBeUndefined();

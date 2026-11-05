@@ -6,6 +6,7 @@
 import type { Kysely, Updateable } from "kysely";
 import { chunkArray } from "../chunks.js";
 import type { DB, ScanKind, ScanRow, ScanStatus } from "../schema.js";
+import { assertTransition } from "../../scans/state-machine.js";
 
 const TERMINAL: ReadonlySet<ScanStatus> = new Set([
   "completed",
@@ -16,6 +17,8 @@ const TERMINAL: ReadonlySet<ScanStatus> = new Set([
 export interface NewScan {
   readonly kind: ScanKind;
   readonly requestor?: string | null;
+  /** Só scans de `feed`/`snapshot` carregam símbolo; upload não. */
+  readonly assetSymbol?: string | null;
 }
 
 export interface ScanCursor {
@@ -41,7 +44,11 @@ export class ScansRepo {
   create(input: NewScan): Promise<ScanRow> {
     return this.db
       .insertInto("scans")
-      .values({ kind: input.kind, requestor: input.requestor ?? null })
+      .values({
+        kind: input.kind,
+        requestor: input.requestor ?? null,
+        asset_symbol: input.assetSymbol ?? null,
+      })
       .returningAll()
       .executeTakeFirstOrThrow();
   }
@@ -137,28 +144,60 @@ export class ScansRepo {
   }
 
   /**
+   * Reconciliação de boot: um processo morto no meio de um scan deixa a linha
+   * em `running` para sempre. Roda uma vez, antes do daemon começar a pollar.
+   *
+   * @param {string} reason - Gravado em `failure_reason`.
+   * @returns {Promise<number>} Quantas linhas foram encerradas.
+   */
+  async failRunning(reason: string): Promise<number> {
+    const result = await this.db
+      .updateTable("scans")
+      .set({
+        status: "failed",
+        finished_at: new Date(),
+        failure_reason: reason,
+      })
+      .where("status", "=", "running")
+      .executeTakeFirst();
+
+    return Number(result.numUpdatedRows);
+  }
+
+  /**
    * Transição otimista: só atualiza se o scan estiver no estado esperado.
    *
+   * A aresta é validada por `assertTransition` antes de chegar ao SQL — o banco
+   * só conhece os CHECKs de campos terminais, não o grafo de estados.
+   *
    * Entrar num estado terminal sela `finished_at`; sair dele (requeue) limpa
-   * `finished_at`, `content_hash` e `failure_reason`, porque os CHECKs do schema
-   * proíbem um scan pendente com campos de desfecho. `failure_reason` é
-   * descartado no requeue — quem precisar da causa deve registrá-la antes de
-   * reenfileirar, já que não há tabela de histórico.
+   * `finished_at`, `content_hash`, `failure_reason` e `duration_ms`, porque os
+   * CHECKs do schema proíbem um scan pendente com campos de desfecho.
+   * `failure_reason` é descartado no requeue — quem precisar da causa deve
+   * registrá-la antes de reenfileirar, já que não há tabela de histórico.
    *
    * @param {string} id - UUID do scan.
    * @param {ScanStatus} from - Estado exigido.
    * @param {ScanStatus} to - Estado destino.
-   * @param {{ contentHash?: string; failureReason?: string }} [patch] - Campos
+   * @param {{ contentHash?: string; digestAlg?: string; durationMs?: number; failureReason?: string }} [patch] - Campos
    *   exigidos pelos CHECKs do schema (`completed` exige hash).
    * @returns {Promise<ScanRow | undefined>} A linha nova, ou `undefined` se o
    *   scan não estava em `from`.
+   * @throws {InvalidTransitionError} Se `from -> to` não for uma aresta válida.
    */
   transition(
     id: string,
     from: ScanStatus,
     to: ScanStatus,
-    patch: { contentHash?: string; failureReason?: string } = {},
+    patch: {
+      contentHash?: string;
+      digestAlg?: string;
+      durationMs?: number;
+      failureReason?: string;
+    } = {},
   ): Promise<ScanRow | undefined> {
+    assertTransition(from, to);
+
     const values: Updateable<DB["scans"]> = { status: to };
 
     if (TERMINAL.has(to)) {
@@ -169,11 +208,14 @@ export class ScansRepo {
       values.finished_at = null;
       values.content_hash = null;
       values.failure_reason = null;
+      values.duration_ms = null;
       if (to === "running") values.started_at = new Date();
       if (to === "pending") values.started_at = null;
     }
 
     if (patch.contentHash !== undefined) values.content_hash = patch.contentHash;
+    if (patch.digestAlg !== undefined) values.digest_alg = patch.digestAlg;
+    if (patch.durationMs !== undefined) values.duration_ms = patch.durationMs;
     if (patch.failureReason !== undefined) {
       values.failure_reason = patch.failureReason;
     }
