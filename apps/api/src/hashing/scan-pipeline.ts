@@ -5,7 +5,7 @@
 
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import type { DigestResult, HashAlgorithm } from "@hasheyes/shared";
+import type { DigestResult, HashAlgorithm } from "@chaintelescope/shared";
 import { ProgressTransform, type ProgressStats } from "./progress.js";
 import { CountingSink } from "./sink.js";
 

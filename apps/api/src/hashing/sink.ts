@@ -5,7 +5,7 @@
 
 import { Writable } from "node:stream";
 import { createHash, type Hash } from "node:crypto";
-import type { HashAlgorithm, DigestResult } from "@hasheyes/shared";
+import type { HashAlgorithm, DigestResult } from "@chaintelescope/shared";
 
 /**
  * Opções de inicialização do sink de dados.

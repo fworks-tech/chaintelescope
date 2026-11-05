@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Readable } from "node:stream";
-import { digestsEqual, type DigestResult } from "@hasheyes/shared";
+import { digestsEqual, type DigestResult } from "@chaintelescope/shared";
 import { digest } from "../src/hashing/core.js";
 
 describe("Hashing Core Engine", () => {

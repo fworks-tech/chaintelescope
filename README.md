@@ -25,14 +25,18 @@ This project delivers a focused crypto analysis experience with:
 - Buy/sell execution through partner exchanges
 
 ## Tech Direction
-- Streamlit UI client for fast iteration
-- Python data pipelines for market/news ingestion
-- CI automation and agent-driven repository workflows
+
+Two stacks live side by side during the migration:
+
+- **Python 3.11 + Streamlit** (repo root) — the working product today, and the reference implementation. Feature-frozen; still gets fixes.
+- **Node.js 20+ / TypeScript + Hapi.js** (`apps/api`) with a **React + Vite** client (`apps/web`) — the target architecture. Mid-migration: the API currently serves `GET /healthz` only, and `apps/web` is still a starter template.
+
+`docs/port-inventory.md` tracks what has actually been ported, module by module.
 
 ## Prerequisites
-- Python 3.11
+- Python 3.11 (Streamlit app)
+- Node.js 20+ and pnpm 12 (Node API)
 - Git
-- Optional: VS Code Dev Containers or GitHub Codespaces
 
 ## Quick Start
 
@@ -70,16 +74,28 @@ Optional launcher from the repository root:
 python scripts/run_app.py
 ```
 
+### Node API
+
+```bash
+pnpm install
+pnpm build
+node --env-file=apps/api/.env.example apps/api/dist/main.js   # needs Postgres; see apps/api/.env.example
+curl http://localhost:3000/healthz
+```
+
+Gates: `pnpm -r typecheck`, `pnpm -r lint`, `pnpm test` (builds first — the Node tests import compiled output).
+
 ## Validation
 
-Confirm the app behaves as expected before opening a pull request. The full automated and manual checklist lives in [`docs/validation-and-manual-qa.md`](docs/validation-and-manual-qa.md).
+Confirm the app behaves as expected before opening a pull request.
 
 - [ ] `streamlit run app.py` starts without import errors
 - [ ] Dashboard, Alerts, News, Risk, and Newsletter routes render in the browser
 - [ ] Newsletter subscribe shows success for a valid email and an error for invalid input
-- [ ] `python -m unittest discover -s tests -p 'test_*.py'` passes
-- [ ] `ruff check app.py src tests` and `ruff format --check app.py src tests` pass when Ruff is installed locally
+- [ ] `python -m unittest discover -s tests -p 'test_*.py'` passes (74 tests)
+- [ ] `ruff check app.py src pages tests` and `ruff format --check app.py src pages tests` pass when Ruff is installed locally
 - [ ] `python -m unittest tests/test_source_inventory_note.py` passes for the M4 source inventory note contract
+- [ ] `pnpm test` passes for the Node workspaces
 
 ### M4 source inventory note
 
@@ -135,47 +151,40 @@ Optional environment variables and Streamlit secrets are documented in [`docs/co
 
 ## CI
 
-On push and pull request to `main`, `master`, and `feat/**`, GitHub Actions runs layered quality gates in [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+On push to `main` and on pull requests to `main`, GitHub Actions runs the gates in [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
 
 | Job | What it enforces |
 |-----|------------------|
-| `test` | `python -m unittest discover -s tests -p 'test_*.py'` (validation, mock data helpers, assistant wiring, doc contracts, and a Streamlit `AppTest` smoke run) |
-| `build` | `py_compile` on `app.py`, every `src/**/*.py` module, and routed `pages/**/*.py` entrypoints, plus a Streamlit entrypoint import smoke check |
-| `lint` | Ruff lint and format checks on `app.py`, `src/`, and `tests/` (baseline in [`pyproject.toml`](pyproject.toml)) |
-| `maintainability` | Advisory Ruff complexity and hygiene rules (`C901`, `ERA001`, `ARG001`); reports findings without blocking merges on day one |
+| `lint-and-typecheck` | `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app) |
+| `test-workspaces` | `pnpm test` — builds first, then Vitest (16 tests). A `postgres:16-alpine` service container is provisioned for the integration tests that land with the schema work; no test uses it yet. |
+| `build` | `pnpm -r build` across the monorepo |
+| `python-legacy` | Ruff lint + format check, `py_compile` and import smoke check, and the 74 Python unittest cases (including the Streamlit `AppTest` smoke run) |
+| `quality-gate` | Requires all four jobs above |
 
-Local equivalents after installing dependencies and Ruff (`python -m pip install ruff`):
-
-```bash
-python -m unittest discover -s tests -p 'test_*.py' -v
-python - <<'PY'
-import pathlib, py_compile
-for path in [pathlib.Path("app.py"), *sorted(pathlib.Path("src").rglob("*.py")), *sorted(pathlib.Path("pages").rglob("*.py"))]:
-    py_compile.compile(str(path), doraise=True)
-PY
-ruff check app.py src tests
-ruff format --check app.py src tests
-```
+Local equivalents: see **Quality gates** in [`AGENTS.md`](AGENTS.md).
 
 CI does not start a browser or run Playwright screenshot comparisons yet. See the **Visual regression** note in [`docs/Architecture.md`](docs/Architecture.md) for the deferred pilot path.
 
 ## Project Layout
-- `app.py` — Streamlit UI entrypoint and navigation shell
-- `pages/` — routed Dashboard, Alerts, News, Risk, and Newsletter pages
-- `src/` — UI components, query layer, ingestion helpers, and validation
-- `requirements.txt` — Python dependencies
-- `docs/` — architecture, configuration, validation, and automation playbooks
-- `CHANGELOG.md` — release history and milestone notes
+
+- `app.py`, `pages/`, `src/` — Python/Streamlit app (working product, feature-frozen)
+- `apps/api/` — Hapi.js + TypeScript server (`src/main.ts` entrypoint)
+- `apps/web/` — React + Vite client (starter template, not yet wired to the API)
+- `packages/shared/` — runtime-free TypeScript contracts shared by server and client
+- `bench/` — benchmark scripts (worker threads vs main thread)
+- `tests/` — Python unittest suite
+- `docs/` — architecture, configuration, ADRs, port inventory
+- `legacy/README.md` — freeze policy for the Python app
+- `CHANGELOG.md` — release history
 
 ## Documentation
 
 - [`CHANGELOG.md`](CHANGELOG.md) — release history
 - [`docs/Architecture.md`](docs/Architecture.md) — system structure and runtime flow
 - [`docs/configuration.md`](docs/configuration.md) — environment variables and secrets
-- [`docs/m4-data-pipelines.md`](docs/m4-data-pipelines.md) — dashboard snapshots, ingestion, alerts, and newsletter modules
-- [`docs/validation-and-manual-qa.md`](docs/validation-and-manual-qa.md) — automated checks and manual smoke tests
+- [`docs/port-inventory.md`](docs/port-inventory.md) — Python → Node port status, generated from the code
+- [`docs/adr/`](docs/adr/) — architecture decision records (`archive/` holds superseded ones)
 - [`docs/source-inventory-m4.md`](docs/source-inventory-m4.md) — M4 source discovery research
-- [`docs/agent-skills.md`](docs/agent-skills.md) — agent automation playbook
 
 ## Architecture
 
@@ -202,11 +211,6 @@ System structure, runtime flow, data boundaries, and planned evolution are docum
 - [ ] Confirm charts and tables render
 - [ ] Exercise newsletter subscribe with valid and invalid email
 - [ ] Run `python -m py_compile app.py`
-
-### Optional Dev Container
-- [ ] Reopen the repository in a Dev Container or Codespaces
-- [ ] Confirm dependencies install on container create or update
-- [ ] Run `streamlit run app.py` manually from the repository root
 
 ### Before opening a PR
 - [ ] Choose change type and scope in the pull request template

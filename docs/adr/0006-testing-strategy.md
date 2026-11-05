@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted — the Testcontainers clause is superseded by [ADR-0007](0007-vertical-slices-and-truth-gates.md).
 
 ## Context
 

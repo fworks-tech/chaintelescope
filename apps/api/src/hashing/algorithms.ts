@@ -4,7 +4,7 @@
  */
 
 import { createHash } from "node:crypto";
-import type { HashAlgorithm } from "@hasheyes/shared";
+import type { HashAlgorithm } from "@chaintelescope/shared";
 
 /**
  * Interface mínima para geradores de digest criptográfico.

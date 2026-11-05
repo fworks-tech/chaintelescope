@@ -1,5 +1,7 @@
 # Operations Runbook
 
+> **Status:** runbook guidance, not a shipped artifact. Health-check and backup commands assume a deployment you operate; the repository ships neither a compose file nor a deployed service definition.
+
 Production runbook for ChainTelescope. Covers health checks, monitoring, backups, incident response, and common maintenance tasks.
 
 ## Health checks
