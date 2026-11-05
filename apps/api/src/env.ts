@@ -83,3 +83,28 @@ export function loadEnv(
  * Instância singleton das configurações validadas para injeção direta em módulos da aplicação.
  */
 export const env: Environment = loadEnv();
+
+/**
+ * Lê apenas a conexão de banco, para ferramentas que não precisam do contrato completo
+ * (o runner de migrações, por exemplo, não deve exigir o pepper de autenticação).
+ *
+ * @param {NodeJS.ProcessEnv} [inputEnv=process.env] - Variáveis a validar.
+ * @returns {string} URI de conexão validada.
+ * @throws {Error} Se DATABASE_URL estiver ausente ou não for uma URI postgres.
+ */
+export function loadDatabaseUrl(
+  inputEnv: NodeJS.ProcessEnv = process.env,
+): string {
+  const { value, error } = Joi.object({
+    DATABASE_URL: Joi.string()
+      .uri({ scheme: ["postgres", "postgresql"] })
+      .required(),
+  }).validate(inputEnv, { abortEarly: false });
+
+  if (error) {
+    const errorDetails = error.details.map((d) => d.message).join(", ");
+    throw new Error(`[FATAL] Configuration contract violation: ${errorDetails}`);
+  }
+
+  return (value as { DATABASE_URL: string }).DATABASE_URL;
+}

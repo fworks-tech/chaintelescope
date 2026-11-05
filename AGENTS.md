@@ -58,7 +58,7 @@ Python:
 - `app.py` — Streamlit entrypoint (`st.navigation`), `pages/` thin stubs → `src/views/` → `src/components/`
 - `src/api.py` — FastAPI, 7 endpoints (the Node port covers none of them yet)
 - `src/data/` — dashboard query, market providers via `ccxt_adapter.py`, news ingestion, alerts, newsletter
-- `src/data/assets.py` — 108 asset symbols with provider ID mappings
+- `src/data/assets.py` — 100 asset symbols with provider ID mappings
 - `tests/` — unittest only
 
 ## Conventions
@@ -77,8 +77,8 @@ Python:
 ## Known gotchas
 
 - `ARGON2_PEPPER` is **required at boot but consumed by nothing** — there is no auth code yet.
-- No migrations, no schema, no tables: `db:migrate`/`db:seed` scripts point at files that do not exist.
-- `apps/api/src/ingest/*` compiles and has unit-level behaviour but is unreachable from HTTP.
+- No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`.
+- `apps/api/src/ingest/*` compiles and has unit-level behaviour, but no route calls it yet.
 - `hapi-pino` is installed, never registered — `server.log()` output goes nowhere.
 - `apps/web` is a Vite starter template; the React surface is greenfield, not a partial port.
 - The bench deliberately measures caller-observed lag; its printed conclusion does not match its own numbers (pool p99 is worse than main thread). Fix the methodology before quoting it.
