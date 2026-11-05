@@ -51,16 +51,19 @@ Rules:
 
 ## Policy
 
-Enforced when the register/change-password routes land (#120):
+Enforced by `POST /auth/register` (`AuthSession.#assertPasswordPolicy`):
 
-- Minimum length 12 characters; no composition rules (no forced uppercase/digit/symbol).
-- Reject the top-10 000 common passwords and the user's own e-mail local part.
+- Minimum length 12 characters; maximum 128; no composition rules (no forced uppercase/digit/symbol).
+- Reject a password equal to the e-mail local part.
+- A top-10 000 common-password denylist is **not** bundled yet; if added, it belongs in the same policy function so login and future change-password routes share it.
 - Allow and encourage passphrases; do not truncate at 72 bytes (that is a bcrypt limit, not Argon2's).
 - Do **not** force periodic rotation. NIST SP 800-63B recommends rotation only on evidence of compromise.
 
 ## Legacy hashes
 
-`needsUpgrade()` returns `true` for anything that is not a current Argon2id PHC string, including bcrypt and unreadable values. The intended flow:
+`needsUpgrade()` returns `true` for anything that is not a current Argon2id PHC string, including bcrypt and unreadable values. On a successful Argon2id login the route already re-hashes when `needsUpgrade()` says so.
+
+`verifyPassword` itself only understands Argon2id and returns `false` for bcrypt. There is no bcrypt verifier in the Node app and the Python app never stored credentials, so no legacy rows exist. If one ever appears, the intended flow is:
 
 1. Verify with the legacy algorithm.
 2. On success, re-hash with `hashPassword` and replace `users.password_hash` in the same transaction.
