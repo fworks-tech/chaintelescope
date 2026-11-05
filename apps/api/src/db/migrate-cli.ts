@@ -5,7 +5,7 @@
  */
 
 import pg from "pg";
-import { loadDatabaseUrl } from "../env.js";
+import { loadDatabaseUrl } from "../env-db.js";
 import { migrate } from "./migrate.js";
 
 const direction = process.argv.includes("--down") ? "down" : "up";
