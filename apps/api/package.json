@@ -6,6 +6,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
+    "db:migrate": "pnpm build && node dist/db/migrate-cli.js",
+    "db:migrate:down": "pnpm build && node dist/db/migrate-cli.js --down",
+    "db:seed": "pnpm build && node dist/db/migrate-cli.js",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

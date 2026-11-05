@@ -43,6 +43,10 @@ jobs:
   test-workspaces:
     name: Test API & Workspaces
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://postgres:ci@localhost:5432/chaintelescope_ci
+      NODE_ENV: test
+      ARGON2_PEPPER: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     services:
       postgres:
         image: postgres:16-alpine
@@ -75,12 +79,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Migration round-trip
+        run: |
+          pnpm build
+          pnpm --filter @chaintelescope/api db:migrate
+          pnpm --filter @chaintelescope/api db:migrate:down
+          pnpm --filter @chaintelescope/api db:migrate
+
       - name: Run unit & integration tests
         run: pnpm test
-        env:
-          DATABASE_URL: postgres://postgres:ci@localhost:5432/chaintelescope_ci
-          NODE_ENV: test
-          ARGON2_PEPPER: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
   build:
     name: Build Monorepo

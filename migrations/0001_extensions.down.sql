@@ -1,0 +1,2 @@
+-- Extensions are cluster-wide; dropping pgcrypto could break another schema.
+-- Intentionally a no-op.
