@@ -4,7 +4,13 @@
  * @module api/auth/routes
  */
 
-import { badRequest, unauthorized } from "@hapi/boom";
+import {
+  LoginPayloadSchema,
+  RegisterPayloadSchema,
+  type LoginPayload,
+  type RegisterPayload,
+} from "@chaintelescope/shared";
+import { unauthorized } from "@hapi/boom";
 import type {
   Plugin,
   Request,
@@ -26,22 +32,6 @@ export interface AuthPluginOptions {
   readonly pepper: string;
   /** `Secure` só em produção: o dev server é HTTP. */
   readonly secureCookie: boolean;
-}
-
-function readCredentials(payload: unknown): {
-  email: string;
-  password: string;
-} {
-  if (typeof payload !== "object" || payload === null) {
-    throw badRequest("invalid_payload");
-  }
-
-  const { email, password } = payload as Record<string, unknown>;
-  if (typeof email !== "string" || typeof password !== "string") {
-    throw badRequest("invalid_payload");
-  }
-
-  return { email, password };
 }
 
 function refreshTokenFrom(request: Request): string | undefined {
@@ -76,9 +66,14 @@ export const authPlugin: Plugin<AuthPluginOptions> = {
     server.route({
       method: "POST",
       path: "/auth/register",
-      options: { auth: false, tags: ["auth"] },
+      options: {
+        auth: false,
+        tags: ["auth"],
+        validate: { payload: RegisterPayloadSchema },
+      },
       handler: async (request, h) => {
-        const user = await session.register(readCredentials(request.payload));
+        const { email, password } = request.payload as RegisterPayload;
+        const user = await session.register({ email, password });
         return h.response(user).code(201);
       },
     });
@@ -86,11 +81,16 @@ export const authPlugin: Plugin<AuthPluginOptions> = {
     server.route({
       method: "POST",
       path: "/auth/login",
-      options: { auth: false, tags: ["auth"] },
+      options: {
+        auth: false,
+        tags: ["auth"],
+        validate: { payload: LoginPayloadSchema },
+      },
       handler: async (request, h) => {
-        const credentials = readCredentials(request.payload);
+        const { email, password } = request.payload as LoginPayload;
         const issued = await session.login({
-          ...credentials,
+          email,
+          password,
           ip: request.info.remoteAddress,
         });
         return issue(h, issued, cookie);

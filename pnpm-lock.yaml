@@ -245,6 +245,10 @@ importers:
         version: 8.3.5(@types/node@24.19.2)
 
   packages/shared:
+    dependencies:
+      joi:
+        specifier: ^18.3.0
+        version: 18.3.0
     devDependencies:
       '@types/node':
         specifier: ^26.6.5

@@ -15,7 +15,7 @@ Status legend:
 | `pages/*.py` (5 stubs) | `apps/web` routes | `pending` | Delegation stubs for Streamlit multi-page routing; React routing does not exist yet. |
 | `src/views/*.py` (6) | `apps/web` screens | `pending` | No screens implemented beyond the template. |
 | `src/views/__init__.py` | `apps/web` data layer | `pending` | Cached dashboard snapshot wrapper; React has no data layer. |
-| `src/api.py` (7 endpoints + handler) | `apps/api/src/routes/` | `partial` | Only `GET /healthz` exists; the six domain endpoints are not routed. |
+| `src/api.py` (7 endpoints + handler) | `apps/api/src/routes/` | `partial` | `GET /healthz` and `/auth/*` exist; the six domain endpoints are not routed. |
 | `src/app_shell.py` | `apps/web` filters | `pending` | Sidebar filter engine; no client state layer yet. |
 | `src/components/*.py` (9 modules) | `apps/web` components | `pending` | No React components exist. |
 | `src/styles.py` | `apps/web` styling | `pending` | Tailwind is not installed. |
@@ -30,7 +30,7 @@ Status legend:
 | `src/data/newsletter/store.py` | Postgres table | `pending` | JSON-file store still the only implementation. |
 | `src/data/newsletter/delivery.py` | delivery provider | `pending` | — |
 | `src/logging.py` | `apps/api` logger | `pending` | `hapi-pino` is installed but no plugin registers it. |
-| `src/validation/email.py` | `packages/shared` Joi schema | `pending` | No shared validation contracts yet. |
+| `src/validation/email.py` | `packages/shared/src/validation.ts` | `ported` | Joi contracts for auth and scan payloads, bound to TS types by `Joi.object<T, true>`; Hapi applies them with a 422 `failAction` |
 | `src/__init__.py`, `src/components/__init__.py`, `src/data/__init__.py`, `src/validation/__init__.py` | — | `dropped` | Python package markers; no equivalent needed. |
 
 ## What actually exists on the Node side
