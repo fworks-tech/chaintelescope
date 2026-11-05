@@ -77,6 +77,7 @@ jobs:
 
       - name: Migration round-trip
         run: |
+          pnpm build
           pnpm --filter @chaintelescope/api db:migrate
           pnpm --filter @chaintelescope/api db:migrate:down
           pnpm --filter @chaintelescope/api db:migrate
