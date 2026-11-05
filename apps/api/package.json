@@ -9,15 +9,17 @@
     "db:migrate": "pnpm build && node dist/db/migrate-cli.js",
     "db:migrate:down": "pnpm build && node dist/db/migrate-cli.js --down",
     "db:seed": "pnpm build && node dist/db/migrate-cli.js",
+    "db:reset": "pnpm build && node dist/db/migrate-cli.js --down && node dist/db/migrate-cli.js",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@chaintelescope/shared": "workspace:*",
     "@hapi/boom": "^10.0.1",
     "@hapi/hapi": "^21.4.11",
-    "@chaintelescope/shared": "workspace:*",
     "hapi-pino": "^13.0.0",
     "joi": "^18.3.0",
+    "kysely": "^0.28.19",
     "pg": "^8.23.1"
   },
   "devDependencies": {

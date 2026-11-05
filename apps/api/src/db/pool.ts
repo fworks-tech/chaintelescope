@@ -1,10 +1,12 @@
 import type { Plugin, Server } from "@hapi/hapi";
+import { Kysely, PostgresDialect } from "kysely";
 import pg from "pg";
 import { env } from "../env.js";
+import type { DB } from "./schema.js";
 
 declare module "@hapi/hapi" {
   interface Server {
-    db: pg.Pool;
+    db: Kysely<DB>;
   }
 }
 
@@ -19,10 +21,12 @@ export const dbPlugin: Plugin<Record<string, never>> = {
       connectionTimeoutMillis: 5_000,
     });
 
-    server.decorate("server", "db", pool);
+    const db = new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
+
+    server.decorate("server", "db", db);
 
     server.ext("onPreStop", async () => {
-      await pool.end();
+      await db.destroy();
     });
   },
 };

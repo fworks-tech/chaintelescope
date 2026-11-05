@@ -4,8 +4,9 @@
  */
 
 import { canonicalize, type JsonValue } from "@chaintelescope/shared";
+import type { SnapshotsRepo } from "../db/repos/snapshots.js";
+import type { IngestResult } from "../db/types.js";
 import { digest } from "../hashing/core.js";
-import type { IngestContext } from "./news.js";
 
 /**
  * Estrutura de dados representativa de um snapshot de mercado financeiro em uma janela de tempo.
@@ -26,13 +27,13 @@ export interface MarketSnapshotCandidate {
  * Normaliza o vetor da watchlist para assegurar ordenação antes da serialização.
  *
  * @param {MarketSnapshotCandidate} snapshot - Objeto de dados do mercado capturado.
- * @param {IngestContext} ctx - Contexto de banco de dados.
- * @returns {Promise<{ deduped: true } | { created: string }>} Resultado da inserção no PostgreSQL.
+ * @param {SnapshotsRepo} repo - Repositório de snapshots (raiz ou transação).
+ * @returns {Promise<IngestResult>} Resultado da inserção no PostgreSQL.
  */
 export async function ingestSnapshot(
   snapshot: MarketSnapshotCandidate,
-  ctx: IngestContext,
-): Promise<{ deduped: true } | { created: string }> {
+  repo: SnapshotsRepo,
+): Promise<IngestResult> {
   // Ordena a lista de ativos para impedir que ordens arbitrárias alterem o hash
   const canonicalPayload: JsonValue = {
     metrics: snapshot.metrics,
@@ -44,18 +45,8 @@ export async function ingestSnapshot(
   const canonicalBytes = canonicalize(canonicalPayload);
   const snapshotHash = (await digest(canonicalBytes, "sha256")).hex;
 
-  const res = await ctx.query<{ id: string }>(
-    `INSERT INTO snapshots (snapshot_hash, payload)
-     VALUES ($1, $2)
-     ON CONFLICT (snapshot_hash) DO NOTHING
-     RETURNING id`,
-    [snapshotHash, canonicalBytes.toString("utf8")],
-  );
-
-  const row = res.rows[0];
-  if (!row) {
-    return { deduped: true };
-  }
-
-  return { created: row.id };
+  return repo.insertIfAbsent({
+    snapshotHash,
+    payload: canonicalBytes.toString("utf8"),
+  });
 }
