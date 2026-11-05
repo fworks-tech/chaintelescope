@@ -3,7 +3,7 @@
  * @module api/ingest/snapshot
  */
 
-import { canonicalize, type JsonValue } from "@hasheyes/shared";
+import { canonicalize, type JsonValue } from "@chaintelescope/shared";
 import { digest } from "../hashing/core.js";
 import type { IngestContext } from "./news.js";
 

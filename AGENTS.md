@@ -1,74 +1,85 @@
 # ChainTelescope — Agent Guide
 
+One repo, two stacks:
+
+- **Python 3.11 / Streamlit at the repo root** — the only working product today. Frozen for features, still gets bug fixes.
+- **Node.js 20+ / TypeScript monorepo in `apps/` + `packages/`** — the target architecture, mid-migration. Right now it answers exactly one route (`GET /healthz`).
+
+Do not describe the Node side as a finished port. `docs/port-inventory.md` is the honest scorecard; regenerate its status column from the code before claiming parity.
+
 ## Quick start
+
 ```powershell
+# Python app (works today)
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 streamlit run app.py
+
+# Node API (needs a DATABASE_URL and ARGON2_PEPPER; see apps/api/.env.example)
+pnpm install
+pnpm build
+pnpm --filter @chaintelescope/api start        # -> dist/main.js
 ```
 
-## Quality gates (run in order)
-1. **Lint** — `ruff check app.py src tests`
-2. **Format check** — `ruff format --check app.py src tests`
-3. **Compile check** — `python -m py_compile app.py` + all `src/**/*.py` + `pages/**/*.py`
-4. **Test** — `python -m unittest discover -s tests -p 'test_*.py' -v`
+## Quality gates (run before every PR)
 
-CI runs these in parallel jobs (`test`, `build`, `lint`). A `maintainability` job runs advisory rules (`C901,ERA001,ARG001`) but does not block.
+Python:
+1. `ruff check app.py src pages tests`
+2. `ruff format --check app.py src pages tests`
+3. `python -m py_compile app.py` + `python -c "import importlib; importlib.import_module('app')"`
+4. `python -m unittest discover -s tests -p 'test_*.py' -v` (74 tests, ~60 s)
+
+Node:
+1. `pnpm build` — must precede tests: `apps/api/test/worker-pool.test.ts` imports `../dist/**` and `@chaintelescope/shared` resolves to its `dist/`
+2. `pnpm -r typecheck` (shared, api, web)
+3. `pnpm -r lint` (oxlint on `apps/web`; the API has no lint yet)
+4. `pnpm test` (= `pnpm build && pnpm -r test`)
+
+CI (`.github/workflows/ci.yml`) jobs: `lint-and-typecheck`, `test-workspaces` (Postgres 16 service container configured, **no test uses it yet**), `build`, `python-legacy`, and `quality-gate` which requires all four.
 
 ## Project structure
-- `app.py` — Streamlit entrypoint, `st.navigation` shell
-- `pages/` — thin stubs delegating to `src/views/`
-- `src/views/` — actual view renderers composing `src/components/`
-- `src/components/` — 10 modules: assistant, chart_theme, dashboard_header, feed_panels, kpi_row, newsletter, price_trend, risk_graph, trending_report
-- `src/app_shell.py` — sidebar filter engine (time window, watchlist, market source, trend filter)
-- `src/styles.py` — global CSS injection
-- `src/data/` — dashboard query, market providers (binance/coingecko/coinbase), news, alerts, mock
-- `src/data/assets.py` — 100+ asset symbols with CoinGecko/Coinbase/Binance ID mappings
-- `src/validation/email.py` — email validation (`@` and `.` check)
-- `src/logging.py` — structured loguru sink configuration
-- `src/views/__init__.py` — cached dashboard snapshot wrapper (`@st.cache_data(ttl=30)`)
-- `tests/` — unittest files (no pytest)
-- `notebooks/` — Jupyter notebooks for EDA, strategies, reports
-- `docs/` — architecture, configuration, deployment, operations, development guide
-- `scripts/pr-skill.py` — PR automation tool (create/validate/summary)
 
-## Ruff conventions
-- `pyproject.toml` config: line-length=100, target-version=py311, double quotes, space indentation
-- Rules: `E,F,I,UP,B` (ignore `E501`)
-- Run on: `app.py src tests`
+Node:
 
-## Testing quirks
-- Uses **unittest** only (no pytest). Do not add pytest fixtures or decorators.
-- Streamlit `AppTest` smoke tests in `test_app_smoke.py` render the full UI.
-- Market/news data falls back to mock when remote providers are unavailable — no live API keys needed.
-- Doc-contract test: `python -m unittest tests/test_source_inventory_note.py`
-- New test files: `test_caching.py`, `test_retry.py`, `test_logging.py` (43 total, was 35)
+- `apps/api` — Hapi.js server (`src/main.ts` entry, `src/server.ts` builder, `src/env.ts` Joi-validated env)
+  - `src/hashing/` — `digest`, streaming `scanStream`, `CountingSink`, `ProgressTransform`
+  - `src/workers/` — `TaskPool` + `tasks/{parse-feed,match-blocklist}.ts`
+  - `src/ingest/` — canonicalise → sha256 → `INSERT ... ON CONFLICT` (no caller, no table yet)
+  - `src/db/pool.ts` — `pg.Pool` plugin decorated as `server.db` (zero queries issued)
+  - `src/routes/` — `health.ts` only
+- `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
+- `packages/shared` — runtime-free contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`
+- `bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
+- `legacy/README.md` — freeze policy for the Python app
+
+Python:
+
+- `app.py` — Streamlit entrypoint (`st.navigation`), `pages/` thin stubs → `src/views/` → `src/components/`
+- `src/api.py` — FastAPI, 7 endpoints (the Node port covers none of them yet)
+- `src/data/` — dashboard query, market providers via `ccxt_adapter.py`, news ingestion, alerts, newsletter
+- `src/data/assets.py` — 108 asset symbols with provider ID mappings
+- `tests/` — unittest only
+
+## Conventions
+
+- **Commits:** Conventional Commits, lowercase imperative subject.
+- **Python:** ruff, line-length 100, rules `E,F,I,UP,B` (ignore `E501`), double quotes; unittest only — no pytest fixtures or decorators.
+- **Node:** TypeScript strict + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`, NodeNext ESM (import with `.js` suffix), Vitest in `apps/api/test/*.test.ts`, Prettier (`pnpm format`).
+- **Docs:** ADRs in `docs/adr/`; anything superseded moves to `docs/adr/archive/` instead of being rewritten.
 
 ## Config & secrets
-- Loading order: Streamlit secrets (`.streamlit/secrets.toml`) → env vars → defaults
-- `.env`, `.streamlit/secrets.toml` are gitignored — never commit them
-- OpenAI assistant vars: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`, `OPENAI_TIMEOUT_SECONDS`
-- Market source: `MARKET_PROVIDER` env var or sidebar filter (`auto`/`binance`/`coingecko`/`coinbase`/`mock`)
-- Auto fallback chain: Binance → CoinGecko → Coinbase → mock
-- Provider base URLs: `BINANCE_BASE_URL`, `COINGECKO_BASE_URL`, `MARKET_REQUEST_TIMEOUT_SECONDS`
-- News feeds: `NEWS_FEED_URLS` (default CoinDesk + Cointelegraph RSS)
-- Newsletter: `NEWSLETTER_PROVIDER` (stub by default), `NEWSLETTER_DATA_DIR`, `NEWSLETTER_API_KEY`
-- Subscriptions stored in `data/newsletter_subscriptions.json`
-- See `docs/configuration.md` for all options
 
-## Workflow conventions
-- **Conventional commits** required
-- PR template at `.github/pull_request_template.md` — fill all sections
-- Update `CHANGELOG.md` for user-visible changes
-- Dev container at `.devcontainer/devcontainer.json` (universal:2 image; run `streamlit run app.py` manually)
-- PR automation: `python scripts/pr-skill.py create|validate|summary`
+- Python: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWS_FEED_URLS`, `NEWSLETTER_*`, `CORS_ORIGINS`. See `docs/configuration.md`.
+- Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`). Nothing loads `.env` automatically — use `node --env-file`.
+- Never commit `.env`, `.streamlit/secrets.toml`, or real peppers/JWT secrets.
 
 ## Known gotchas
-- No typechecking in CI (mypy not configured)
-- No pre-commit hooks
-- `src/data/` is source code; runtime data goes to `data/` (gitignored)
-- Sidebar has 4 controls: Time Window, Watchlist, Market Source, Trend Filter
-- `app.py` uses `st.navigation` → `pages/`; the modular architecture is fully wired
-- Notebooks import from `src/` — run from repo root with `sys.path` setup
-- **Repo name is ChainTelescope** — evolved from HashHelm
+
+- `ARGON2_PEPPER` is **required at boot but consumed by nothing** — there is no auth code yet.
+- No migrations, no schema, no tables: `db:migrate`/`db:seed` scripts point at files that do not exist.
+- `apps/api/src/ingest/*` compiles and has unit-level behaviour but is unreachable from HTTP.
+- `hapi-pino` is installed, never registered — `server.log()` output goes nowhere.
+- `apps/web` is a Vite starter template; the React surface is greenfield, not a partial port.
+- The bench deliberately measures caller-observed lag; its printed conclusion does not match its own numbers (pool p99 is worse than main thread). Fix the methodology before quoting it.
+- `.pre-commit-config.yaml` and `.devcontainer/` no longer exist; `scripts/pr-skill.py` remains the PR helper.

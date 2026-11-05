@@ -4,7 +4,7 @@
  */
 
 import type { Readable } from "node:stream";
-import type { HashAlgorithm, DigestResult } from "@hasheyes/shared";
+import type { HashAlgorithm, DigestResult } from "@chaintelescope/shared";
 import { defaultHasherFactory, type HasherFactory } from "./algorithms.js";
 
 /**

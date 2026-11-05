@@ -74,12 +74,12 @@ describe("Worker Threads TaskPool", () => {
           {
             id: "1",
             title: "CVE-2026-0001 Alert",
-            link: "https://hasheyes.org/advisory/1",
+            link: "https://chaintelescope.example/advisory/1",
           },
           {
             id: "2",
             title: "Zero-day Hash Match",
-            link: "https://hasheyes.org/advisory/2",
+            link: "https://chaintelescope.example/advisory/2",
           },
         ],
       }),

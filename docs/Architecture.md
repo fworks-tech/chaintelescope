@@ -4,12 +4,12 @@ This document describes how ChainTelescope is structured today. For setup and ru
 
 ## Overview
 
-The application has two UI layers that share the same data and API layer:
+The repository holds two stacks during the migration:
 
-1. **Streamlit client** (legacy, local dev) — entrypoint in [`app.py`](../app.py), routed pages under [`pages/`](../pages/), UI modules under [`src/`](../src/). The browser talks to a Streamlit server that reruns the entry script on interaction.
-2. **React SPA** (primary, Vercel-deployed) — lives under [`frontend/`](../frontend/), consumes the FastAPI REST API at [`src/api.py`](../src/api.py). Deployed on Vercel alongside the FastAPI backend.
+1. **Python / Streamlit** (working, feature-frozen) — entrypoint in [`app.py`](../app.py), routed pages under [`pages/`](../pages/), UI modules under [`src/`](../src/). The browser talks to a Streamlit server that reruns the entry script on interaction. This is what runs at the live URL today.
+2. **Node.js / TypeScript monorepo** (target, mid-migration) — Hapi.js API in [`apps/api`](../apps/api), React + Vite client in [`apps/web`](../apps/web), shared contracts in [`packages/shared`](../packages/shared). Today the API serves `GET /healthz` only and `apps/web` is still the Vite template.
 
-Both UIs consume the same data layer in [`src/data/`](../src/data/) and the same FastAPI endpoints. Streamlit is kept as a rapid-prototyping fallback; the React SPA is the deployment target.
+[`docs/port-inventory.md`](port-inventory.md) records what has actually been ported, file by file. Treat it as the source of truth over any milestone label.
 
 The product direction in [README.md](../README.md) calls for Python data pipelines, alerts, and newsletter automation. Market and feed ingestion modules are wired through a shared dashboard query layer with mock and remote fallbacks.
 
@@ -43,24 +43,23 @@ flowchart LR
 
 On each run, `app.py` configures the page, applies global styles, and delegates to `st.navigation` routes in `pages/`. Shared sidebar filters come from [`src/app_shell.py`](../src/app_shell.py). Dashboard panels consume a `DashboardSnapshot` from [`src/data/dashboard_query.py`](../src/data/dashboard_query.py).
 
-### FastAPI + React SPA (Vercel, production)
+### Node.js API (target stack, in progress)
 
 ```mermaid
 flowchart LR
-  Browser[React SPA]
-  VercelEdge[Vercel edge]
-  FastAPI[FastAPI /api/*]
-  QueryLayer[dashboard_query]
-  Providers[market_and_news_modules]
+  Client[React client apps/web]
+  Hapi[Hapi.js apps/api]
+  Shared[packages/shared contracts]
+  DB[(Postgres)]
+  Stream[hash scan pipeline]
 
-  Browser -->|GET /| VercelEdge
-  VercelEdge -->|static| Browser
-  Browser -->|GET /api/*| FastAPI
-  FastAPI --> QueryLayer
-  QueryLayer --> Providers
+  Client -.->|not wired yet| Hapi
+  Hapi --> Shared
+  Hapi --> Stream
+  Hapi -.->|schema not created yet| DB
 ```
 
-Vercel routes all `/api/*` requests to the FastAPI serverless function at `src/api.py` and all other requests to the React SPA static build in `frontend/dist/`. The React SPA calls the FastAPI endpoints for all data (snapshot, news, alerts, assistant). See [ADR-003](adr/003-fastapi-react-vercel.md) for the full deployment architecture.
+What exists: `buildServer()` composes plugins (`db-pool`, `health`), `env.ts` validates the environment at import time, and `hashing/` + `workers/` provide the non-blocking scan path. What does not exist yet: migrations, any domain route, any query, auth. See [ADR-0001](adr/0001-node-ts-refactor.md) for the cutover decision and [ADR-0004](adr/0004-postgres-over-json-files.md) for the persistence direction.
 
 ## Module map
 
@@ -150,19 +149,23 @@ M4 source discovery for market, feed, investor, and developer inputs is document
 | `pydantic` | Market and feed models | Validated config and API models |
 | `python-dotenv` | Local provider and newsletter configuration | Local and deployment secrets |
 
-CI and local setup install the full [`requirements.txt`](../requirements.txt). The React frontend dependencies are in [`frontend/package.json`](../frontend/package.json).
+CI and local setup install the full [`requirements.txt`](../requirements.txt) for the Python app; the Node workspaces install through `pnpm` (see [README.md](../README.md)).
 
 ## Repository boundaries
 
 | Path | Role |
 |------|------|
-| [`app.py`](../app.py) | Streamlit UI entrypoint (local dev fallback) |
-| [`pages/`](../pages/) | Streamlit routed pages (local dev fallback) |
+| [`app.py`](../app.py) | Streamlit UI entrypoint (working product today) |
+| [`pages/`](../pages/) | Streamlit routed pages |
 | [`src/`](../src/) | Python: FastAPI API, data layer, validation, logging |
-| [`frontend/`](../frontend/) | React SPA (Vite + TypeScript) — primary production UI |
+| [`apps/api/`](../apps/api/) | Hapi.js + TypeScript API (1 route today) |
+| [`apps/web/`](../apps/web/) | React + Vite client (starter template) |
+| [`packages/shared/`](../packages/shared/) | TypeScript contracts shared by API and client |
+| [`bench/`](../bench/) | Benchmark scripts (worker threads vs main thread) |
+| [`legacy/README.md`](../legacy/README.md) | Freeze policy for the Python app |
 | [`requirements.txt`](../requirements.txt) | Python dependencies |
 | [`notebooks/`](../notebooks/) | Jupyter notebooks for EDA, strategies, and report generation |
-| [`docs/`](../docs/) | Architecture, configuration, validation, and automation playbooks |
+| [`docs/`](../docs/) | Architecture, configuration, ADRs, port inventory |
 
 ## Snapshot assembly flow
 
@@ -189,21 +192,21 @@ See `src/data/dashboard_query.py` for the `DashboardSnapshot` dataclass with 16 
 
 ## Automation
 
-- **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): on push to `main` and on any pull request, installs dependencies on Python 3.11 and runs four jobs:
-  - `test` — `unittest` discovery for validation helpers, mock data adapters, assistant wiring, doc contracts, and a Streamlit `AppTest` smoke run of `app.py`
-  - `build` — `py_compile` on `app.py`, all `src/**/*.py` modules, routed `pages/**/*.py` entrypoints, and a Streamlit entrypoint import smoke check
-  - `lint` — Ruff lint and format checks on `app.py`, `src/`, and `tests/` using [`pyproject.toml`](../pyproject.toml)
-  - `maintainability` — advisory Ruff complexity and hygiene rules (`C901`, `ERA001`, `ARG001`) that annotate pull requests without blocking merges while legacy debt is triaged
-- **Visual regression**: deferred until multi-page navigation stabilizes (#12). The planned pilot is Playwright snapshot checks against `streamlit run app.py` on localhost for the dashboard and one alternate route, with dynamic KPI and timestamp regions masked. Baseline updates will be documented alongside that pilot; CI does not run browser screenshots today.
-- **Dev Container** ([`.devcontainer/devcontainer.json`](../.devcontainer/devcontainer.json)): installs dependencies via `updateContentCommand` on create and update. Streamlit is not started automatically; run `streamlit run app.py` from the repository root after the container is ready.
+- **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): on push to `main` and on any pull request, runs five jobs:
+  - `lint-and-typecheck` — `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app)
+  - `test-workspaces` — `pnpm test` (builds first, then Vitest). A `postgres:16-alpine` service container is provisioned but not yet exercised by any test
+  - `build` — `pnpm -r build`
+  - `python-legacy` — Ruff lint/format, `py_compile` + import smoke check, and the 74 Python unittest cases
+  - `quality-gate` — requires all four
+- **Visual regression**: deferred. The planned pilot is Playwright snapshot checks against `streamlit run app.py` on localhost for the dashboard and one alternate route, with dynamic KPI and timestamp regions masked. CI does not run browser screenshots today.
 
 ## Evolution
 
-Near-term architecture aligned with [README.md](../README.md) product scope:
+Near-term architecture tracked in GitHub milestones (`Refactor M1`–`M6`):
 
-- Expand provider coverage and caching for market and feed ingestion
-- Add richer alert scoring and investor/developer signal inputs
-- Add scheduled workers for newsletter generation and alert evaluation
-- **Migrate Streamlit UI to React SPA** (FastAPI + React on Vercel per [ADR-003](adr/003-fastapi-react-vercel.md))
-- Phase out Streamlit pages once React reaches feature parity
-- Add frontend tests and type-checking to CI after MVP
+- Create the Postgres schema and ports the scan/ingest path onto it
+- Port the FastAPI surface to Hapi.js routes with Joi contracts and Boom errors
+- Add OWASP-compliant auth (Argon2id + rotating refresh tokens)
+- Replace the Vite template with the real React client and Redux Toolkit state
+- Ship profiling evidence (V8 profiles, event-loop lag, load-test SLOs) alongside the code
+- Retire the Streamlit pages once the React client reaches feature parity

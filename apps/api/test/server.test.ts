@@ -3,7 +3,7 @@ import type { Server } from "@hapi/hapi";
 
 // Configura variáveis antes de importar o env.ts
 process.env["DATABASE_URL"] =
-  "postgresql://postgres:postgres@localhost:5432/hasheyes_test";
+  "postgresql://postgres:postgres@localhost:5432/chaintelescope_test";
 process.env["ARGON2_PEPPER"] =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
