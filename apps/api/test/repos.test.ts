@@ -120,7 +120,8 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
   test("requeueing a failed scan clears its terminal fields", async () => {
     const scan = await scans.create({ kind: "upload" });
 
-    const failed = await scans.transition(scan.id, "pending", "failed", {
+    await scans.claimBatch(1);
+    const failed = await scans.transition(scan.id, "running", "failed", {
       failureReason: "collector timed out",
     });
     expect(failed).toMatchObject({
@@ -132,6 +133,7 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
     expect(requeued).toMatchObject({
       status: "pending",
       finished_at: null,
+      started_at: null,
       content_hash: null,
       failure_reason: null,
     });

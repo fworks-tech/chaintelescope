@@ -141,7 +141,9 @@ export class ScansRepo {
    *
    * Entrar num estado terminal sela `finished_at`; sair dele (requeue) limpa
    * `finished_at`, `content_hash` e `failure_reason`, porque os CHECKs do schema
-   * proíbem um scan pendente com campos de desfecho.
+   * proíbem um scan pendente com campos de desfecho. `failure_reason` é
+   * descartado no requeue — quem precisar da causa deve registrá-la antes de
+   * reenfileirar, já que não há tabela de histórico.
    *
    * @param {string} id - UUID do scan.
    * @param {ScanStatus} from - Estado exigido.
@@ -168,6 +170,7 @@ export class ScansRepo {
       values.content_hash = null;
       values.failure_reason = null;
       if (to === "running") values.started_at = new Date();
+      if (to === "pending") values.started_at = null;
     }
 
     if (patch.contentHash !== undefined) values.content_hash = patch.contentHash;
