@@ -8,3 +8,4 @@ export interface HealthResponse {
 
 export * from "./hash.js";
 export * from "./canonical.js";
+export * from "./validation.js";

@@ -3,6 +3,7 @@ import type { Server } from "@hapi/hapi";
 import { authPlugin } from "./auth/routes.js";
 import { env } from "./env.js";
 import { dbPlugin } from "./db/pool.js";
+import { failAction, validationPlugin } from "./plugins/validation.js";
 import type { ScanRow } from "./db/schema.js";
 import { healthPlugin } from "./routes/health.js";
 import { ScanCanceller } from "./scans/cancellation.js";
@@ -41,6 +42,7 @@ export async function buildServer(
       payload: {
         maxBytes: 50 * 1024 * 1024,
       },
+      validate: { failAction },
     },
   });
 
@@ -48,7 +50,7 @@ export async function buildServer(
   const canceller = new ScanCanceller();
   server.app.scanCanceller = canceller;
 
-  await server.register([dbPlugin, healthPlugin]);
+  await server.register([validationPlugin, dbPlugin, healthPlugin]);
 
   await server.register({
     plugin: authPlugin,

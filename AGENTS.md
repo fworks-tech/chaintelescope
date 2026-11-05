@@ -52,7 +52,7 @@ Node:
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
   - `src/routes/` — `health.ts` only
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
-- `packages/shared` — runtime-free contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`
+- `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, and the Joi request schemas in `validation.ts`
 - `bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
 - `legacy/README.md` — freeze policy for the Python app
 
@@ -84,6 +84,8 @@ Python:
 - Refresh rotation revokes the whole family when an already-rotated token is replayed. Both the stolen and the current token die; the user logs in again. Cookie is `Path=/auth`, so only the auth routes receive it.
 - `GET /auth/me` and the `jwt` strategy exist, but there is no admin route yet (`/admin/*` lands in #122). Scope enforcement is proven in `test/auth-session.test.ts` with a test-registered route.
 - No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`; `apps/api/vitest.config.ts` disables file parallelism because the DB suites share one schema.
+- `apps/api/src/plugins/validation.ts` sets Joi as Hapi's validator and the global `failAction`: a Joi schema error is 422 with `{ path, type }` details only, while unparseable JSON is 400 from Hapi's parser before the schema runs. Auth routes use `RegisterPayloadSchema`/`LoginPayloadSchema`; `CreateScanPayloadSchema` waits for #122.
+- Schema and TypeScript type are bound by `Joi.object<T, true>` (strict key map), not generated: a missing/extra key or wrong schema kind fails typecheck. There is no `shared:types` codegen step, deliberately (Joi 18 supports `StandardSchemaV1`, and `joi-to-typescript` still peers on Joi 17).
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
 - `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.
 - `apps/api/src/scans/*` compiles and has database coverage, but nothing claims a scan in production yet: `buildServer` only registers the daemon when `scanSourceFor` is supplied, and no fetcher exists for `feed`/`snapshot`. Uploads get their digest in the route (#122), not the daemon.

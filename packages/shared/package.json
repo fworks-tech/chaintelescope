@@ -13,6 +13,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "joi": "^18.3.0"
+  },
   "devDependencies": {
     "@types/node": "^26.6.5"
   }
