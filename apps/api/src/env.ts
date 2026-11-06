@@ -20,6 +20,7 @@ import Joi from "joi";
  * @property {boolean} SCAN_DAEMON_ENABLED - Liga o poller in-process de scans.
  * @property {number} SCAN_POLL_INTERVAL_MS - Intervalo entre ticks do poller.
  * @property {number} SCAN_CONCURRENCY - Scans executados simultaneamente por processo.
+ * @property {string} CORS_ORIGINS - Lista separada por vírgula de origens permitidas; `*` é recusado.
  */
 export interface Environment {
   readonly NODE_ENV: "development" | "test" | "production";
@@ -33,6 +34,34 @@ export interface Environment {
   readonly SCAN_DAEMON_ENABLED: boolean;
   readonly SCAN_POLL_INTERVAL_MS: number;
   readonly SCAN_CONCURRENCY: number;
+  readonly CORS_ORIGINS: string;
+}
+
+/**
+ * Cada entrada precisa ser uma URL absoluta; `*` é sempre recusado porque o
+ * cookie de refresh usa credenciais e o navegador proíbe wildcard nesse caso.
+ */
+function validateCorsOrigins(
+  value: string,
+  helpers: Joi.CustomHelpers,
+): string | Joi.ErrorReport {
+  const origins = value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
+  if (origins.length === 0) return helpers.error("any.invalid");
+
+  for (const origin of origins) {
+    if (origin === "*") return helpers.error("any.invalid");
+    try {
+      new URL(origin);
+    } catch {
+      return helpers.error("any.invalid");
+    }
+  }
+
+  return origins.join(",");
 }
 
 /**
@@ -58,6 +87,9 @@ const envSchema = Joi.object<Environment>({
     .default(true),
   SCAN_POLL_INTERVAL_MS: Joi.number().integer().min(100).default(1000),
   SCAN_CONCURRENCY: Joi.number().integer().min(1).max(32).default(4),
+  CORS_ORIGINS: Joi.string()
+    .default("http://localhost:3000,http://localhost:8501")
+    .custom(validateCorsOrigins, "CORS allowlist"),
 }).unknown(true);
 
 /**
