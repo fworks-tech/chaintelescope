@@ -52,9 +52,9 @@ Node:
   - `src/plugins/` — `validation.ts` (Joi + 422 `failAction`) and `errors.ts` (single error envelope, 500 opacity, 503 when `server.app.degraded`)
   - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets,auth}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
-  - `src/routes/` — `health.ts` only
+  - `src/routes/` — `health.ts`, `scans.ts` (streamed upload, keyset list, cancel/delete) and `newsletter.ts`; `news`/`snapshot` are not registered until their data sources land
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
-- `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, and the Joi request schemas in `validation.ts`
+- `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
 - `bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
 - `legacy/README.md` — freeze policy for the Python app
 
@@ -97,6 +97,9 @@ Python:
 - `ScanDaemon.start()` runs the boot reconciliation (`UPDATE scans SET status='failed', failure_reason='startup_reconciliation' WHERE status='running'`) before the first tick. It is single-node: starting a second instance marks the first instance's in-flight rows failed.
 - The app-level transition table lives in `src/scans/state-machine.ts` and is enforced by `ScansRepo.transition`; the database only enforces the terminal-field CHECKs. `failed -> pending` is a legal edge (retry) even though the #111 sketch omitted it.
 - `scans.asset_symbol` has no FK to `assets` on purpose: scans outlive the asset registry, and #114's coverage query is what surfaces orphaned symbols.
+- `POST /scans` streams `application/octet-stream` into `scanStream`, then persists the scan and artifact; the row goes `pending -> running -> completed` inside the request because a synchronous upload has no daemon to claim it. `scan_artifacts.content_hash` is globally unique, so re-uploading the same bytes reuses the first artifact row (the second scan has no artifact of its own). Uploaded scans are not authenticated yet; `requestor` stays null and #121/#122's follow-ups own ownership.
+- `GET /scans` paginates on the opaque cursor from `packages/shared/src/cursor.ts` (base64url of `{createdAt, id}`); an invalid cursor is 400 `invalid_cursor`, an id that is not a UUID is 404 `scan_not_found` instead of a Postgres 22P02.
+- `news` and `snapshot` routes are deliberately absent: the news ingest has no scheduler and the market provider port does not exist. `POST /newsletter/subscribe` uses `newsletter_subscriptions` (0009) so duplicate e-mail is a 409 from the unique index.
 - `kysely` is pinned to `^0.28` because 0.29+ declares `engines.node >= 22`; the repo, `.nvmrc` and CI target Node 20. Moving to Node 22 (then kysely 0.29) is a separate chore.
 - `ScansRepo.list` paginates on the tuple `(created_at, id)` — a timestamp-only cursor silently drops rows that share an instant.
 - `hapi-pino` is registered in `buildServer` (`silent` in tests); it redacts `authorization`, `cookie` and `set-cookie`. `request.log` reaches the destination from there.

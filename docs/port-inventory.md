@@ -15,7 +15,7 @@ Status legend:
 | `pages/*.py` (5 stubs) | `apps/web` routes | `pending` | Delegation stubs for Streamlit multi-page routing; React routing does not exist yet. |
 | `src/views/*.py` (6) | `apps/web` screens | `pending` | No screens implemented beyond the template. |
 | `src/views/__init__.py` | `apps/web` data layer | `pending` | Cached dashboard snapshot wrapper; React has no data layer. |
-| `src/api.py` (7 endpoints + handler) | `apps/api/src/routes/` | `partial` | `GET /healthz` and `/auth/*` exist; the six domain endpoints are not routed. |
+| `src/api.py` (7 endpoints + handler) | `apps/api/src/routes/` | `partial` | `GET /healthz`, `/auth/*`, `/scans*` and `POST /newsletter/subscribe` exist; `/api/news`, `/api/snapshot`, `/api/alerts` and the subscription list are not routed. |
 | `src/app_shell.py` | `apps/web` filters | `pending` | Sidebar filter engine; no client state layer yet. |
 | `src/components/*.py` (9 modules) | `apps/web` components | `pending` | No React components exist. |
 | `src/styles.py` | `apps/web` styling | `pending` | Tailwind is not installed. |
@@ -27,7 +27,7 @@ Status legend:
 | `src/data/news/ingestion.py` | `apps/api/src/ingest/news.ts` | `partial` | Canonical hashing and repo-backed `ON CONFLICT (content_hash) DO NOTHING` exist and are integration-tested, but no route or scheduler calls them and the fetch/parse stage is unwritten. |
 | `src/data/news/models.py` | `apps/api/src/ingest/news.ts` types | `partial` | `RawNewsItem`/`NewsRow` mirrored; no fetch pipeline. |
 | `src/data/alerts/rules.py` | alert evaluation | `pending` | — |
-| `src/data/newsletter/store.py` | Postgres table | `pending` | JSON-file store still the only implementation. |
+| `src/data/newsletter/store.py` | `apps/api/src/db/repos/newsletter.ts` + `0009` | `ported` | Postgres `newsletter_subscriptions`, unique e-mail; `POST /newsletter/subscribe` returns 201/409/422. The list endpoint is deliberately not exposed. |
 | `src/data/newsletter/delivery.py` | delivery provider | `pending` | — |
 | `src/logging.py` | `apps/api/src/server.ts` (hapi-pino) | `ported` | JSON logs via pino; `authorization`, `cookie` and `set-cookie` redacted; silent in tests |
 | `src/validation/email.py` | `packages/shared/src/validation.ts` | `ported` | Joi contracts for auth and scan payloads, bound to TS types by `Joi.object<T, true>`; Hapi applies them with a 422 `failAction` |
@@ -41,7 +41,7 @@ Status legend:
 | Workers | `apps/api/src/workers/{pool,worker-runner,tasks/*}.ts` | `ported`, unit-tested; benchmark in `bench/` needs a methodology fix |
 | Canonicalisation | `packages/shared/src/{canonical,hash}.ts` | `ported`, unit-tested |
 | Ingestion | `apps/api/src/ingest/{news,snapshot}.ts` | `partial` — repo-backed, news + snapshot dedupe integration-tested; no caller |
-| Scan jobs | `apps/api/src/scans/{state-machine,orchestrator,daemon,cancellation,plugin}.ts` | `partial` — state machine, retry, reconcile and cancellation integration-tested; the daemon only registers when a source adapter is supplied, and none exists yet |
+| Scan jobs | `apps/api/src/scans/{state-machine,orchestrator,daemon,cancellation,plugin}.ts`, `apps/api/src/routes/scans.ts` | `partial` — state machine, retry, reconcile, cancellation and the HTTP surface integration-tested; the daemon only registers when a source adapter is supplied, and none exists yet |
 | HTTP | `apps/api/src/routes/health.ts` | `ported` (1 route) |
 | DB access | `apps/api/src/db/{schema,tx,chunks,pool,migrate,analytics}.ts`, `db/repos/*`, `migrations/*.sql` e `apps/api/sql/*.sql` | `ported` — typed `DB`, `withTx`, repositories, fixture-tested analytics queries and schema tests |
 | Auth | `apps/api/src/auth/{password,throttle,tokens,session,strategy,routes}.ts`, `db/repos/auth.ts`, migrations `0003` + `0008` | `partial` — register/login/refresh/logout/me, JWT strategy and reuse detection; admin routes in #122 |
