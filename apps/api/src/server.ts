@@ -5,6 +5,11 @@ import { authPlugin } from "./auth/routes.js";
 import { env } from "./env.js";
 import { dbPlugin } from "./db/pool.js";
 import { errorsPlugin } from "./plugins/errors.js";
+import {
+  rateLimitPlugin,
+  type RateLimitOptions,
+} from "./plugins/rate-limit.js";
+import { secureHeadersPlugin } from "./plugins/secure-headers.js";
 import { failAction, validationPlugin } from "./plugins/validation.js";
 import type { ScanRow } from "./db/schema.js";
 import { healthPlugin } from "./routes/health.js";
@@ -32,6 +37,8 @@ export interface BuildServerOptions {
    * seria pior do que não pollar.
    */
   readonly scanSourceFor?: (scan: ScanRow) => ScanSource | undefined;
+  /** Injeta relógio/limites nos testes; produção usa os defaults. */
+  readonly rateLimit?: RateLimitOptions;
 }
 
 export async function buildServer(
@@ -39,10 +46,21 @@ export async function buildServer(
   options: BuildServerOptions = {},
 ): Promise<Server> {
   const resolved = config ?? env;
+  const allowedOrigins = resolved.CORS_ORIGINS.split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
   const server = Hapi.server({
     host: resolved.HOST,
     port: resolved.PORT,
     routes: {
+      cors: {
+        origin: allowedOrigins,
+        credentials: true,
+        maxAge: 86_400,
+        additionalHeaders: ["authorization", "content-type"],
+        exposedHeaders: ["location"],
+      },
       payload: {
         maxBytes: 50 * 1024 * 1024,
       },
@@ -67,6 +85,8 @@ export async function buildServer(
     },
   });
 
+  await server.register(rateLimitPlugin(options.rateLimit ?? {}));
+
   await server.register([
     validationPlugin,
     dbPlugin,
@@ -86,8 +106,10 @@ export async function buildServer(
     },
   });
 
-  // Último: o envelope de erro envolve as respostas de todas as rotas.
+  // Último: o envelope de erro envolve as respostas de todas as rotas e os
+  // headers de segurança entram no objeto final, depois da substituição.
   await server.register(errorsPlugin);
+  await server.register(secureHeadersPlugin);
 
   if (resolved.SCAN_DAEMON_ENABLED && options.scanSourceFor !== undefined) {
     await server.register(

@@ -76,7 +76,7 @@ Python:
 ## Config & secrets
 
 - Python: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWS_FEED_URLS`, `NEWSLETTER_*`, `CORS_ORIGINS`. See `docs/configuration.md`.
-- Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`). Nothing loads `.env` automatically — use `node --env-file`.
+- Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`, `CORS_ORIGINS`). Nothing loads `.env` automatically — use `node --env-file`.
 - Never commit `.env`, `.streamlit/secrets.toml`, or real peppers/JWT secrets.
 
 ## Known gotchas
@@ -89,6 +89,9 @@ Python:
 - `apps/api/src/plugins/validation.ts` sets Joi as Hapi's validator and the global `failAction`: a Joi schema error is 422 with `{ path, type }` details only, while unparseable JSON is 400 from Hapi's parser before the schema runs. Auth routes use `RegisterPayloadSchema`/`LoginPayloadSchema`; `CreateScanPayloadSchema` waits for #122.
 - Every error leaves through `plugins/errors.ts` as `{ error: { code, message, requestId }, details? }`. Domain errors carry stable codes (`duplicate_email`, `no_token`, `insufficient_scope`, `semantic_validation`, ...); Hapi/framework Boom errors map by status. A non-Boom throw is 500 with a generic message and a `request.log` entry tagged `internal`. 2xx bodies are untouched.
 - `server.app.degraded = true` short-circuits every request to 503 `db_pool_saturated` + `Retry-After: 5`; the pool probe that sets it lands in M5-I24.
+- `plugins/secure-headers.ts` is registered after `errors.ts` so the five OWASP headers land on the response object the error ext produced. It also handles a Boom response directly if the order ever changes.
+- CORS is Hapi's route-level allowlist from `CORS_ORIGINS`; `*` is refused at boot in every environment because the refresh cookie requires credentials. `Access-Control-Allow-Origin` echoes the matched origin and is never `*`.
+- Rate limiting is a per-process token bucket (`plugins/rate-limit.ts`): `/scans` 30/min, `/auth/login` 5/min, other `/auth/*` 10/min, keyed by `user:<id>` when authenticated and `ip:<addr>` otherwise. `/healthz` and `/readyz` are exempt; `OPTIONS` preflights never consume a token. A Redis backend swaps in behind the `RateLimiter` interface.
 - Schema and TypeScript type are bound by `Joi.object<T, true>` (strict key map), not generated: a missing/extra key or wrong schema kind fails typecheck. There is no `shared:types` codegen step, deliberately (Joi 18 supports `StandardSchemaV1`, and `joi-to-typescript` still peers on Joi 17).
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
 - `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.

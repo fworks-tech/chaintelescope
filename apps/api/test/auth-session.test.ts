@@ -45,7 +45,9 @@ describe.skipIf(!DATABASE_URL)("auth routes", () => {
 
   beforeAll(async () => {
     await migrate(handle.pool, "up");
-    server = await buildServer();
+    server = await buildServer(undefined, {
+      rateLimit: { enabled: false },
+    });
 
     // Rota só de teste: a rota real de admin chega em #122. Aqui o alvo é
     // provar que um token `user` não satisfaz `access.scope: ['admin']`.
@@ -171,7 +173,9 @@ describe.skipIf(!DATABASE_URL)("auth routes", () => {
     // Servidor próprio: o throttle é por processo e por IP, e o `inject`
     // compartilha 127.0.0.1. Usar o servidor da suíte bloquearia os testes
     // seguintes no sexto login.
-    const isolated = await buildServer();
+    const isolated = await buildServer(undefined, {
+      rateLimit: { enabled: false },
+    });
     await isolated.initialize();
 
     try {
