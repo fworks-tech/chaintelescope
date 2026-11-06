@@ -17,8 +17,9 @@ const DATABASE_URL = process.env.DATABASE_URL;
 process.env["DATABASE_URL"] ??= DATABASE_URL;
 process.env["ARGON2_PEPPER"] ??=
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-const JWT_SECRET = "test-only-access-secret-0123456789abcdef";
-process.env["JWT_ACCESS_SECRET"] ??= JWT_SECRET;
+const JWT_SECRET =
+  process.env["JWT_ACCESS_SECRET"] ?? "test-only-access-secret-0123456789abcdef";
+process.env["JWT_ACCESS_SECRET"] = JWT_SECRET;
 
 const { buildServer } = await import("../src/server.js");
 
