@@ -95,7 +95,9 @@ export class ScansRepo {
     if (options.cursor !== undefined) {
       const at = new Date(options.cursor.createdAt);
       if (Number.isNaN(at.getTime())) {
-        throw new RangeError("cursor.createdAt is not a valid ISO-8601 instant");
+        throw new RangeError(
+          "cursor.createdAt is not a valid ISO-8601 instant",
+        );
       }
       const { id } = options.cursor;
 
@@ -114,6 +116,19 @@ export class ScansRepo {
       .orderBy("id", "desc")
       .limit(options.limit ?? DEFAULT_LIMIT)
       .execute();
+  }
+
+  /**
+   * @param {string} id - UUID do scan.
+   * @returns {Promise<boolean>} `true` se uma linha foi removida.
+   */
+  async delete(id: string): Promise<boolean> {
+    const result = await this.db
+      .deleteFrom("scans")
+      .where("id", "=", id)
+      .executeTakeFirst();
+
+    return Number(result.numDeletedRows) > 0;
   }
 
   /**
@@ -213,7 +228,8 @@ export class ScansRepo {
       if (to === "pending") values.started_at = null;
     }
 
-    if (patch.contentHash !== undefined) values.content_hash = patch.contentHash;
+    if (patch.contentHash !== undefined)
+      values.content_hash = patch.contentHash;
     if (patch.digestAlg !== undefined) values.digest_alg = patch.digestAlg;
     if (patch.durationMs !== undefined) values.duration_ms = patch.durationMs;
     if (patch.failureReason !== undefined) {

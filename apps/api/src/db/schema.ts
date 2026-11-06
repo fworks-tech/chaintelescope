@@ -96,6 +96,14 @@ export interface BlocklistHashesTable {
   added_at: Generated<Date>;
 }
 
+export interface NewsletterSubscriptionsTable {
+  id: Generated<string>;
+  email: string;
+  frequency: "Daily" | "Weekly" | "Biweekly";
+  format: "Summary" | "Deep Dive";
+  created_at: Generated<Date>;
+}
+
 export interface DB {
   assets: AssetsTable;
   news_items: NewsItemsTable;
@@ -106,6 +114,7 @@ export interface DB {
   scan_artifacts: ScanArtifactsTable;
   scan_matches: ScanMatchesTable;
   blocklist_hashes: BlocklistHashesTable;
+  newsletter_subscriptions: NewsletterSubscriptionsTable;
 }
 
 export type ScanRow = Selectable<ScansTable>;

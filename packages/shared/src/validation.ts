@@ -40,3 +40,37 @@ export const CreateScanPayloadSchema = Joi.object<CreateScanPayload, true>({
     otherwise: Joi.optional(),
   }),
 }).meta({ className: "CreateScanPayload" });
+
+export type ScanStatus =
+  "pending" | "running" | "completed" | "failed" | "cancelled";
+
+export interface ListScansQuery {
+  cursor?: string;
+  limit: number;
+  status?: ScanStatus;
+}
+
+export const ListScansQuerySchema = Joi.object<ListScansQuery, true>({
+  cursor: Joi.string().optional(),
+  limit: Joi.number().integer().min(1).max(100).default(50),
+  status: Joi.string()
+    .valid("pending", "running", "completed", "failed", "cancelled")
+    .optional(),
+}).meta({ className: "ListScansQuery" });
+
+export interface NewsletterSubscriptionPayload {
+  email: string;
+  frequency: "Daily" | "Weekly" | "Biweekly";
+  format: "Summary" | "Deep Dive";
+}
+
+export const NewsletterSubscriptionSchema = Joi.object<
+  NewsletterSubscriptionPayload,
+  true
+>({
+  email: Joi.string().trim().lowercase().email().max(320).required(),
+  frequency: Joi.string()
+    .valid("Daily", "Weekly", "Biweekly")
+    .default("Weekly"),
+  format: Joi.string().valid("Summary", "Deep Dive").default("Summary"),
+}).meta({ className: "NewsletterSubscriptionPayload" });

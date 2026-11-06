@@ -8,6 +8,8 @@ import { errorsPlugin } from "./plugins/errors.js";
 import { failAction, validationPlugin } from "./plugins/validation.js";
 import type { ScanRow } from "./db/schema.js";
 import { healthPlugin } from "./routes/health.js";
+import { newsletterPlugin } from "./routes/newsletter.js";
+import { scansPlugin } from "./routes/scans.js";
 import { ScanCanceller } from "./scans/cancellation.js";
 import type { ScanDaemon } from "./scans/daemon.js";
 import type { ScanSource } from "./scans/orchestrator.js";
@@ -65,7 +67,13 @@ export async function buildServer(
     },
   });
 
-  await server.register([validationPlugin, dbPlugin, healthPlugin]);
+  await server.register([
+    validationPlugin,
+    dbPlugin,
+    healthPlugin,
+    scansPlugin,
+    newsletterPlugin,
+  ]);
 
   await server.register({
     plugin: authPlugin,
