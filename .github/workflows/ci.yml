@@ -115,7 +115,7 @@ jobs:
 
       - name: OpenAPI is up to date
         run: |
-          pnpm --filter @chaintelescope/openapi generate
+          node packages/openapi/generate.mjs
           git diff --exit-code -- packages/openapi/openapi.json
 
   python-legacy:
