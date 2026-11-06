@@ -79,6 +79,7 @@ Python:
 - Python: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWS_FEED_URLS`, `NEWSLETTER_*`, `CORS_ORIGINS`. See `docs/configuration.md`.
 - Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`, `CORS_ORIGINS`). Nothing loads `.env` automatically — use `node --env-file`.
 - Never commit `.env`, `.streamlit/secrets.toml`, or real peppers/JWT secrets.
+- The model is written down: `docs/security/threat-model.md` (assets, boundaries, attacks, OWASP mapping) and `docs/security/secrets.md` (every variable above, rotation, leak impact). Read them before adding a secret or an outbound integration.
 
 ## Known gotchas
 
