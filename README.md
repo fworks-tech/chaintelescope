@@ -182,6 +182,8 @@ CI does not start a browser or run Playwright screenshot comparisons yet. See th
 - [`CHANGELOG.md`](CHANGELOG.md) — release history
 - [`docs/Architecture.md`](docs/Architecture.md) — system structure and runtime flow
 - [`docs/configuration.md`](docs/configuration.md) — environment variables and secrets
+- [`docs/security/threat-model.md`](docs/security/threat-model.md) — assets, trust boundaries, attacks and OWASP mapping
+- [`docs/security/secrets.md`](docs/security/secrets.md) — every API variable, rotation and leak response
 - [`docs/port-inventory.md`](docs/port-inventory.md) — Python → Node port status, generated from the code
 - [`docs/adr/`](docs/adr/) — architecture decision records (`archive/` holds superseded ones)
 - [`docs/source-inventory-m4.md`](docs/source-inventory-m4.md) — M4 source discovery research
