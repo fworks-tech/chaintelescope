@@ -1,0 +1,9 @@
+{
+  "name": "@chaintelescope/openapi",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs"
+  }
+}

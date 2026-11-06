@@ -19,6 +19,7 @@ import {
   BadRequestError,
   ConflictError,
   NotFoundError,
+  UnauthorizedError,
 } from "../errors/index.js";
 import { scanStream } from "../hashing/scan-pipeline.js";
 import { cancelScan } from "../scans/orchestrator.js";
@@ -66,6 +67,14 @@ function scanId(request: Request): string {
   return id;
 }
 
+function requestorId(request: Request): string {
+  const credentials = request.auth.credentials as { user?: unknown };
+  if (typeof credentials.user !== "string") {
+    throw new UnauthorizedError("no_token", "Missing authentication", "Bearer");
+  }
+  return credentials.user;
+}
+
 export const scansPlugin: Plugin<void> = {
   name: "scans",
   version: "0.0.0",
@@ -74,6 +83,8 @@ export const scansPlugin: Plugin<void> = {
       method: "POST",
       path: "/scans",
       options: {
+        auth: "jwt",
+        tags: ["scans"],
         payload: {
           output: "stream",
           parse: false,
@@ -86,7 +97,10 @@ export const scansPlugin: Plugin<void> = {
         const artifacts = new ScanArtifactsRepo(request.server.db);
 
         const result = await scanStream(request.payload as Readable);
-        const scan = await scans.create({ kind: "upload" });
+        const scan = await scans.create({
+          kind: "upload",
+          requestor: requestorId(request),
+        });
         await scans.transition(scan.id, "pending", "running");
 
         try {
@@ -122,7 +136,11 @@ export const scansPlugin: Plugin<void> = {
     server.route({
       method: "GET",
       path: "/scans",
-      options: { validate: { query: ListScansQuerySchema } },
+      options: {
+        auth: "jwt",
+        tags: ["scans"],
+        validate: { query: ListScansQuerySchema },
+      },
       handler: async (request) => {
         const query = request.query as unknown as ListScansQuery;
         const limit = query.limit;
@@ -161,6 +179,7 @@ export const scansPlugin: Plugin<void> = {
     server.route({
       method: "GET",
       path: "/scans/{id}",
+      options: { auth: "jwt", tags: ["scans"] },
       handler: async (request) => {
         const scan = await new ScansRepo(request.server.db).byId(
           scanId(request),
@@ -175,6 +194,7 @@ export const scansPlugin: Plugin<void> = {
     server.route({
       method: "POST",
       path: "/scans/{id}/cancel",
+      options: { auth: "jwt", tags: ["scans"] },
       handler: async (request, h) => {
         const scans = new ScansRepo(request.server.db);
         const id = scanId(request);
@@ -201,6 +221,10 @@ export const scansPlugin: Plugin<void> = {
     server.route({
       method: "DELETE",
       path: "/scans/{id}",
+      options: {
+        auth: { strategy: "jwt", access: { scope: ["admin"] } },
+        tags: ["scans"],
+      },
       handler: async (request, h) => {
         const deleted = await new ScansRepo(request.server.db).delete(
           scanId(request),

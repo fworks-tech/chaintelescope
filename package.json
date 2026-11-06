@@ -25,6 +25,8 @@
     "test:integration": "pnpm --filter @chaintelescope/api test:integration",
     "test:coverage": "pnpm -r test:coverage",
     "test:watch": "pnpm -r test:watch",
+    "api:openapi": "pnpm build:shared && pnpm build:api && pnpm --filter @chaintelescope/openapi generate",
+    "api:openapi:check": "pnpm api:openapi && git diff --exit-code -- packages/openapi/openapi.json",
     "db:migrate": "pnpm --filter @chaintelescope/api db:migrate",
     "db:migrate:down": "pnpm --filter @chaintelescope/api db:migrate:down",
     "db:seed": "pnpm --filter @chaintelescope/api db:seed",

@@ -3,8 +3,10 @@
  * rotas /scans, /auth/login e exclusão de /healthz.
  */
 
+import { randomUUID } from "node:crypto";
 import type { Server } from "@hapi/hapi";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { signAccessToken } from "../src/auth/tokens.js";
 import { TokenBucketLimiter } from "../src/plugins/rate-limit.js";
 import { migrate } from "../src/db/migrate.js";
 import { makeDb } from "./helpers/db.js";
@@ -71,11 +73,21 @@ describe.skipIf(!DATABASE_URL)("rate limit routes", () => {
   });
 
   test("the 31st /scans request in the window is 429 with Retry-After", async () => {
+    const token = signAccessToken(
+      randomUUID(),
+      ["user"],
+      process.env["JWT_ACCESS_SECRET"] ?? "",
+      "15m",
+    ).token;
+    const headers = { authorization: `Bearer ${token}` };
+
     for (let attempt = 1; attempt <= 30; attempt += 1) {
-      expect((await server.inject("/scans")).statusCode).toBe(200);
+      expect((await server.inject({ url: "/scans", headers })).statusCode).toBe(
+        200,
+      );
     }
 
-    const blocked = await server.inject("/scans");
+    const blocked = await server.inject({ url: "/scans", headers });
 
     expect(blocked.statusCode).toBe(429);
     expect((blocked.result as { error: { code: string } }).error.code).toBe(

@@ -19,7 +19,10 @@ export const newsletterPlugin: Plugin<void> = {
     server.route({
       method: "POST",
       path: "/newsletter/subscribe",
-      options: { validate: { payload: NewsletterSubscriptionSchema } },
+      options: {
+        tags: ["newsletter"],
+        validate: { payload: NewsletterSubscriptionSchema },
+      },
       handler: async (request, h) => {
         const payload = request.payload as NewsletterSubscriptionPayload;
         const subscription = await new NewsletterRepo(

@@ -113,6 +113,11 @@ jobs:
       - name: Build all workspaces
         run: pnpm -r build
 
+      - name: OpenAPI is up to date
+        run: |
+          pnpm --filter @chaintelescope/openapi generate
+          git diff --exit-code -- packages/openapi/openapi.json
+
   python-legacy:
     name: Python (legacy app)
     runs-on: ubuntu-latest
