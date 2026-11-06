@@ -7,7 +7,7 @@ export const healthPlugin: Plugin<void> = {
     server.route({
       method: "GET",
       path: "/healthz",
-      options: { tags: ["api"] },
+      options: { tags: ["health"] },
       handler: () => ({ status: "ok" }),
     });
   },

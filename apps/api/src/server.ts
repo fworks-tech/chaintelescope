@@ -87,14 +87,9 @@ export async function buildServer(
 
   await server.register(rateLimitPlugin(options.rateLimit ?? {}));
 
-  await server.register([
-    validationPlugin,
-    dbPlugin,
-    healthPlugin,
-    scansPlugin,
-    newsletterPlugin,
-  ]);
+  await server.register([validationPlugin, dbPlugin]);
 
+  // A estratégia precisa existir antes das rotas que a referenciam (`scans`).
   await server.register({
     plugin: authPlugin,
     options: {
@@ -105,6 +100,8 @@ export async function buildServer(
       secureCookie: resolved.NODE_ENV === "production",
     },
   });
+
+  await server.register([healthPlugin, scansPlugin, newsletterPlugin]);
 
   // Último: o envelope de erro envolve as respostas de todas as rotas e os
   // headers de segurança entram no objeto final, depois da substituição.

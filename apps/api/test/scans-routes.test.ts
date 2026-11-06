@@ -13,15 +13,19 @@ import {
   expect,
   test,
 } from "vitest";
+import { AuthRepo } from "../src/db/repos/auth.js";
 import { migrate } from "../src/db/migrate.js";
 import { ScansRepo } from "../src/db/repos/scans.js";
+import { signAccessToken } from "../src/auth/tokens.js";
 import { makeDb } from "./helpers/db.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 process.env["DATABASE_URL"] ??= DATABASE_URL;
 process.env["ARGON2_PEPPER"] ??=
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-process.env["JWT_ACCESS_SECRET"] ??= "test-only-access-secret-0123456789abcdef";
+const JWT_SECRET =
+  process.env["JWT_ACCESS_SECRET"] ?? "test-only-access-secret-0123456789abcdef";
+process.env["JWT_ACCESS_SECRET"] = JWT_SECRET;
 
 const { buildServer } = await import("../src/server.js");
 
@@ -38,11 +42,28 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
   const handle = makeDb(DATABASE_URL ?? "");
   const repo = new ScansRepo(handle.db);
   let server: Server;
+  let userToken: string;
+  let adminToken: string;
 
   beforeAll(async () => {
     await migrate(handle.pool, "up");
-    server = await buildServer();
+    const user = await new AuthRepo(handle.db).createUser({
+      email: "scans@example.com",
+      passwordHash: "unused",
+    });
+    userToken = signAccessToken(user!.id, ["user"], JWT_SECRET, "15m").token;
+    adminToken = signAccessToken(
+      user!.id,
+      ["user", "admin"],
+      JWT_SECRET,
+      "15m",
+    ).token;
+    server = await buildServer(undefined, { rateLimit: { enabled: false } });
     await server.initialize();
+  });
+
+  const auth = (token = userToken) => ({
+    authorization: `Bearer ${token}`,
   });
 
   beforeEach(async () => {
@@ -61,7 +82,10 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
       method: "POST",
       url: "/scans",
       payload: bytes,
-      headers: { "content-type": "application/octet-stream" },
+      headers: {
+        "content-type": "application/octet-stream",
+        ...auth(),
+      },
     });
   }
 
@@ -83,7 +107,11 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
     expect(body.contentHash).toBe(sha);
     expect(created.headers["location"]).toBe(`/scans/${body.id}`);
 
-    const fetched = await server.inject(created.headers["location"] as string);
+    const fetched = await server.inject({
+      method: "GET",
+      url: created.headers["location"] as string,
+      headers: auth(),
+    });
     expect(fetched.statusCode).toBe(200);
     expect(fetched.result).toMatchObject({
       id: body.id,
@@ -106,11 +134,16 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
     const deleted = await server.inject({
       method: "DELETE",
       url: `/scans/${id}`,
+      headers: auth(adminToken),
     });
     expect(deleted.statusCode).toBe(204);
     expect(deleted.payload).toBe("");
 
-    const missing = await server.inject({ method: "GET", url: `/scans/${id}` });
+    const missing = await server.inject({
+      method: "GET",
+      url: `/scans/${id}`,
+      headers: auth(),
+    });
     expect(missing.statusCode).toBe(404);
     expect((missing.result as { error: { code: string } }).error.code).toBe(
       "scan_not_found",
@@ -118,7 +151,11 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
   });
 
   test("an invalid id is 404 scan_not_found, not a database error", async () => {
-    const response = await server.inject({ method: "GET", url: "/scans/nope" });
+    const response = await server.inject({
+      method: "GET",
+      url: "/scans/nope",
+      headers: auth(),
+    });
 
     expect(response.statusCode).toBe(404);
     expect((response.result as { error: { code: string } }).error.code).toBe(
@@ -132,12 +169,14 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
     const accepted = await server.inject({
       method: "POST",
       url: `/scans/${scan.id}/cancel`,
+      headers: auth(),
     });
     expect(accepted.statusCode).toBe(202);
 
     const fetched = await server.inject({
       method: "GET",
       url: `/scans/${scan.id}`,
+      headers: auth(),
     });
     const body = fetched.result as ScanBody;
     expect(body.status).toBe("cancelled");
@@ -146,6 +185,7 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
     const again = await server.inject({
       method: "POST",
       url: `/scans/${scan.id}/cancel`,
+      headers: auth(),
     });
     expect(again.statusCode).toBe(409);
     expect((again.result as { error: { code: string } }).error.code).toBe(
@@ -179,7 +219,7 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
         cursor === null
           ? "/scans?limit=10"
           : `/scans?limit=10&cursor=${encodeURIComponent(cursor)}`;
-      const response = await server.inject(url);
+      const response = await server.inject({ url, headers: auth() });
       expect(response.statusCode).toBe(200);
       const body = response.result as {
         items: ScanBody[];
@@ -220,7 +260,10 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
       ])
       .execute();
 
-    const response = await server.inject("/scans?status=failed");
+    const response = await server.inject({
+      url: "/scans?status=failed",
+      headers: auth(),
+    });
     const body = response.result as { items: ScanBody[] };
 
     expect(body.items).toHaveLength(1);
@@ -228,7 +271,10 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
   });
 
   test("a malformed cursor is 400 invalid_cursor", async () => {
-    const invalid = await server.inject("/scans?cursor=not-a-cursor");
+    const invalid = await server.inject({
+      url: "/scans?cursor=not-a-cursor",
+      headers: auth(),
+    });
     expect(invalid.statusCode).toBe(400);
     expect((invalid.result as { error: { code: string } }).error.code).toBe(
       "invalid_cursor",
@@ -238,7 +284,10 @@ describe.skipIf(!DATABASE_URL)("scan routes", () => {
       JSON.stringify({ createdAt: new Date().toISOString(), id: "nope" }),
       "utf8",
     ).toString("base64url");
-    const response = await server.inject(`/scans?cursor=${badId}`);
+    const response = await server.inject({
+      url: `/scans?cursor=${badId}`,
+      headers: auth(),
+    });
     expect(response.statusCode).toBe(400);
   });
 });

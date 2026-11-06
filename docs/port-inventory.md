@@ -41,7 +41,7 @@ Status legend:
 | Workers | `apps/api/src/workers/{pool,worker-runner,tasks/*}.ts` | `ported`, unit-tested; benchmark in `bench/` needs a methodology fix |
 | Canonicalisation | `packages/shared/src/{canonical,hash}.ts` | `ported`, unit-tested |
 | Ingestion | `apps/api/src/ingest/{news,snapshot}.ts` | `partial` — repo-backed, news + snapshot dedupe integration-tested; no caller |
-| Scan jobs | `apps/api/src/scans/{state-machine,orchestrator,daemon,cancellation,plugin}.ts`, `apps/api/src/routes/scans.ts` | `partial` — state machine, retry, reconcile, cancellation and the HTTP surface integration-tested; the daemon only registers when a source adapter is supplied, and none exists yet |
+| Scan jobs | `apps/api/src/scans/{state-machine,orchestrator,daemon,cancellation,plugin}.ts`, `apps/api/src/routes/scans.ts` | `partial` — state machine, retry, reconcile, cancellation and the authenticated HTTP surface integration-tested; the daemon only registers when a source adapter is supplied, and none exists yet |
 | HTTP | `apps/api/src/routes/health.ts` | `ported` (1 route) |
 | DB access | `apps/api/src/db/{schema,tx,chunks,pool,migrate,analytics}.ts`, `db/repos/*`, `migrations/*.sql` e `apps/api/sql/*.sql` | `ported` — typed `DB`, `withTx`, repositories, fixture-tested analytics queries and schema tests |
 | Auth | `apps/api/src/auth/{password,throttle,tokens,session,strategy,routes}.ts`, `db/repos/auth.ts`, migrations `0003` + `0008` | `partial` — register/login/refresh/logout/me, JWT strategy and reuse detection; admin routes in #122 |
