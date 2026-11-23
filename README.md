@@ -28,8 +28,8 @@ This project delivers a focused crypto analysis experience with:
 
 Two stacks live side by side during the migration:
 
-- **Python 3.11 + Streamlit** (`apps/python/` target; at repo root until PR 4) — the working product today, and the reference implementation. Feature-frozen; still gets fixes.
-- **Node.js 20+ / TypeScript + Hapi.js** (`apps/api`) with a **React + Vite** client (`apps/web`) — the target architecture. Mid-migration: the API serves auth, scans, newsletter, and `GET /api/price-trend` (`GET /api/snapshot` returns 503 until #122); `apps/web` is still a starter template.
+- **Python 3.11 + Streamlit** (`apps/python/`) — the working product today, and the reference implementation. Feature-frozen; still gets fixes.
+- **Node.js 20+ / TypeScript + Hapi.js** (`apps/api`) with a **React + Vite** client (`apps/web`) — the target architecture. Mid-migration: the API serves auth, scans, newsletter, and `GET /api/price-trend` (`GET /api/snapshot` returns 503 until #122); `apps/web` is a shell (router + dashboard + typed `/api/price-trend` client), not yet at parity.
 
 See [ADR-0008](docs/adr/0008-monorepo-target-architecture.md) for the multi-app target (`apps/api` on ECS + RDS, `apps/python` + `apps/web` on Vercel).
 
@@ -169,7 +169,7 @@ CI does not start a browser or run Playwright screenshot comparisons yet. See th
 
 ## Project Layout
 
-- `apps/python/` (target; `app.py`, `pages/`, `src/`, `tests/` at root until PR 4) — Python/Streamlit app (working product, feature-frozen)
+- `apps/python/` (`app.py`, `pages/`, `src/`, `tests/`) — Python/Streamlit app (working product, feature-frozen)
 - `apps/api/` — Hapi.js + TypeScript server (`src/main.ts` entrypoint)
 - `apps/web/` — React + Vite SPA shell (router + typed `/api/price-trend` client; per-app `vercel.json`)
 - `packages/shared/` — runtime-free TypeScript contracts shared by server and client
