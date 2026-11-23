@@ -56,7 +56,7 @@ Node:
   - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets,auth}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
   - `src/routes/` — `health.ts`, `scans.ts` (streamed upload, keyset list, cancel/delete), `newsletter.ts`, and `market.ts` (`GET /api/price-trend`, `GET /api/snapshot` returns 503 until non-market deps land); `news`/`alerts` are not registered until their data sources land
-- `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
+- `apps/web` — Vite + React 19 shell: `BrowserRouter` (`Layout` + `Dashboard` + `NotFound`), typed `api/client.ts` (`import type` from `@chaintelescope/shared` only; `VITE_API_BASE_URL`, default `/api`), dev proxy `/api` → `localhost:3000`, Vercel SPA rewrite; no state layer yet
 - `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.integration.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
 - `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
 - `apps/api/bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI

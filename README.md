@@ -171,7 +171,7 @@ CI does not start a browser or run Playwright screenshot comparisons yet. See th
 
 - `apps/python/` (target; `app.py`, `pages/`, `src/`, `tests/` at root until PR 4) — Python/Streamlit app (working product, feature-frozen)
 - `apps/api/` — Hapi.js + TypeScript server (`src/main.ts` entrypoint)
-- `apps/web/` — React + Vite client (starter template, not yet wired to the API)
+- `apps/web/` — React + Vite SPA shell (router + typed `/api/price-trend` client; per-app `vercel.json`)
 - `packages/shared/` — runtime-free TypeScript contracts shared by server and client
 - `packages/openapi/` — generated OpenAPI spec (never hand-edit; `pnpm api:openapi`)
 - `infra/` (PR 7) — CDK TypeScript (ECS Fargate + RDS + ALB + alarms)
