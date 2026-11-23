@@ -1,9 +1,9 @@
 # ChainTelescope — Agent Guide
 
-One repo, two stacks:
+One repo, two stacks (target: three deployable apps — see [ADR-0008](docs/adr/0008-monorepo-target-architecture.md)):
 
-- **Python 3.11 / Streamlit at the repo root** — the only working product today. Frozen for features, still gets bug fixes.
-- **Node.js 20+ / TypeScript monorepo in `apps/` + `packages/`** — the target architecture, mid-migration. Right now it answers `GET /healthz` and the `/auth/*` session endpoints; everything else is still Python.
+- **Python 3.11 / Streamlit (`apps/python/` target; at repo root until PR 4)** — the only working product today. Frozen for features, still gets bug fixes.
+- **Node.js 20+ / TypeScript monorepo in `apps/` + `packages/`** — the target architecture, mid-migration. Right now it serves auth, scans, newsletter, and `GET /api/price-trend`; `GET /api/snapshot` returns 503 until #122.
 
 Do not describe the Node side as a finished port. `docs/port-inventory.md` is the honest scorecard; regenerate its status column from the code before claiming parity.
 
@@ -39,7 +39,7 @@ Node:
 4. `pnpm test` (= `pnpm build && pnpm -r test`) — unit suites only
 5. `pnpm test:integration` — needs `DATABASE_URL`; fails fast without it
 
-CI (`.github/workflows/ci.yml`) jobs: `lint-and-typecheck`, `test-workspaces` (Postgres 16 service container; migrations are round-tripped, then unit and integration suites run), `build`, `python-legacy`, and `quality-gate` which requires all four.
+CI (`.github/workflows/ci.yml`) jobs: `lint-and-typecheck`, `test-workspaces` (Postgres 16 service container; migrations are round-tripped, then unit and integration suites run), `build`, `python-app`, and `quality-gate` which requires all four.
 
 ## Project structure
 
@@ -59,8 +59,8 @@ Node:
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
 - `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.integration.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
 - `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
-- `bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
-- `legacy/README.md` — freeze policy for the Python app
+- `bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI; moves to `apps/api/bench/` in PR 3
+- `docs/spec/` — canonical specs (`tasks/` retired in ADR-0008)
 
 Python:
 
