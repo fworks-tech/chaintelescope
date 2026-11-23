@@ -60,6 +60,7 @@ Node:
 - `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.integration.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
 - `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
 - `apps/api/bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
+- `infra/` — CDK TypeScript (`bin/app.ts`, `lib/{network,data,api,observability}.ts`); `cdk synth --strict` needs no credentials, deploys are manual (see `infra/README.md`)
 - `docs/spec/` — canonical specs (`tasks/` retired in ADR-0008)
 
 Python:
@@ -80,7 +81,7 @@ Python:
 ## Config & secrets
 
 - Python: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWS_FEED_URLS`, `NEWSLETTER_*`, `CORS_ORIGINS`. See `docs/configuration.md`.
-- Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`, `CORS_ORIGINS`, `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`). Nothing loads `.env` automatically — use `node --env-file`.
+- Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL` or `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` parts, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`, `CORS_ORIGINS`, `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`). Nothing loads `.env` automatically — use `node --env-file`.
 - Never commit `.env`, `.streamlit/secrets.toml`, or real peppers/JWT secrets.
 - The model is written down: `docs/security/threat-model.md` (assets, boundaries, attacks, OWASP mapping) and `docs/security/secrets.md` (every variable above, rotation, leak impact). Read them before adding a secret or an outbound integration.
 

@@ -47,3 +47,57 @@ describe("CORS allowlist validation", () => {
     );
   });
 });
+
+describe("PG* database fallback (ECS pattern)", () => {
+  const parts = {
+    PGHOST: "db.example.internal",
+    PGUSER: "ct",
+    PGPASSWORD: "s3cret",
+    PGDATABASE: "chaintelescope",
+  };
+
+  test("composes DATABASE_URL from PG* parts with the default port", async () => {
+    const { loadDatabaseUrl } = await import("../src/env-db.js");
+    expect(loadDatabaseUrl({ ...parts })).toBe(
+      "postgresql://ct:s3cret@db.example.internal:5432/chaintelescope",
+    );
+  });
+
+  test("an explicit DATABASE_URL wins over PG* parts", async () => {
+    const { loadDatabaseUrl } = await import("../src/env-db.js");
+    expect(
+      loadDatabaseUrl({ ...parts, DATABASE_URL: "postgresql://x:y@h:5432/d" }),
+    ).toBe("postgresql://x:y@h:5432/d");
+  });
+
+  test("percent-encodes user and password", async () => {
+    const { loadDatabaseUrl } = await import("../src/env-db.js");
+    expect(
+      loadDatabaseUrl({ ...parts, PGUSER: "u@x", PGPASSWORD: "p:a/ss" }),
+    ).toBe(
+      "postgresql://u%40x:p%3Aa%2Fss@db.example.internal:5432/chaintelescope",
+    );
+  });
+
+  test("rejects incomplete parts without DATABASE_URL", async () => {
+    const { loadDatabaseUrl } = await import("../src/env-db.js");
+    expect(() => loadDatabaseUrl({ PGHOST: "h" })).toThrow(
+      /Configuration contract violation/,
+    );
+  });
+
+  test("loadEnv exposes the composed URL as DATABASE_URL", () => {
+    const { PGHOST, PGUSER, PGPASSWORD, PGDATABASE } = parts;
+    const env = loadEnv({
+      ...base,
+      DATABASE_URL: undefined,
+      PGHOST,
+      PGUSER,
+      PGPASSWORD,
+      PGDATABASE,
+    });
+    expect(env.DATABASE_URL).toBe(
+      "postgresql://ct:s3cret@db.example.internal:5432/chaintelescope",
+    );
+  });
+});

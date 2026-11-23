@@ -174,7 +174,7 @@ CI does not start a browser or run Playwright screenshot comparisons yet. See th
 - `apps/web/` — React + Vite SPA shell (router + typed `/api/price-trend` client; per-app `vercel.json`)
 - `packages/shared/` — runtime-free TypeScript contracts shared by server and client
 - `packages/openapi/` — generated OpenAPI spec (never hand-edit; `pnpm api:openapi`)
-- `infra/` (PR 7) — CDK TypeScript (ECS Fargate + RDS + ALB + alarms)
+- `infra/` — CDK TypeScript (ECS Fargate + RDS + ALB + alarms; `infra/README.md`)
 - `apps/api/bench/` — benchmark scripts (worker threads vs main thread)
 - `apps/api/migrations/` — plain-SQL schema + runner (`pnpm db:migrate`)
 - `tests/` — Python unittest suite → `apps/python/tests/` in PR 4

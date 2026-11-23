@@ -5,6 +5,7 @@
 
 import Joi from "joi";
 import type { MarketProviderSelection } from "@chaintelescope/shared";
+import { resolveDatabaseUrl } from "./env-db.js";
 
 /**
  * Contrato estrito das variáveis de ambiente exigidas pelo runtime da API.
@@ -28,6 +29,12 @@ export interface Environment {
   readonly HOST: string;
   readonly PORT: number;
   readonly DATABASE_URL: string;
+  /** ECS parts pattern: composed into DATABASE_URL at boot when it is absent. */
+  readonly PGHOST?: string;
+  readonly PGPORT?: number;
+  readonly PGUSER?: string;
+  readonly PGPASSWORD?: string;
+  readonly PGDATABASE?: string;
   readonly JWT_ACCESS_SECRET: string;
   readonly JWT_ACCESS_TTL: string;
   readonly JWT_REFRESH_TTL_DAYS: number;
@@ -78,7 +85,12 @@ const envSchema = Joi.object<Environment>({
   PORT: Joi.number().port().default(3000),
   DATABASE_URL: Joi.string()
     .uri({ scheme: ["postgres", "postgresql"] })
-    .required(),
+    .optional(),
+  PGHOST: Joi.string().hostname(),
+  PGPORT: Joi.number().port(),
+  PGUSER: Joi.string(),
+  PGPASSWORD: Joi.string(),
+  PGDATABASE: Joi.string(),
   JWT_ACCESS_SECRET: Joi.string().min(32).required(),
   JWT_ACCESS_TTL: Joi.string().default("15m"),
   JWT_REFRESH_TTL_DAYS: Joi.number().integer().min(1).max(30).default(7),
@@ -130,7 +142,10 @@ export function loadEnv(
     );
   }
 
-  return value as Environment;
+  // ECS injects PG* parts (Secret values cannot be concatenated at synth
+  // time); a full DATABASE_URL always wins when both are present.
+  const DATABASE_URL = resolveDatabaseUrl(value);
+  return { ...value, DATABASE_URL };
 }
 
 /**

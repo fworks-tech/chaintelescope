@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "types": ["node"],
+    // CDK L2 classes are not assignable to their interfaces under
+    // exactOptionalPropertyTypes (upstream typing, not our code).
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["bin/**/*", "lib/**/*", "test/**/*"]
+}

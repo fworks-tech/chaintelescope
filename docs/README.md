@@ -42,5 +42,6 @@ Single entry point for ChainTelescope documentation. If a doc is not listed here
 
 ## Research
 
+- [`../infra/README.md`](../infra/README.md) — AWS baseline and deploy runbook
 - [`source-inventory-m4.md`](source-inventory-m4.md) — M4 source discovery research
 - [`perf/`](perf/) — profiling evidence and benchmarks
