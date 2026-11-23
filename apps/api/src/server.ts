@@ -107,7 +107,11 @@ export async function buildServer(
   await server.register([healthPlugin, scansPlugin, newsletterPlugin]);
   await server.register({
     plugin: marketPlugin,
-    options: options.market ?? {},
+    options: {
+      selection: resolved.MARKET_PROVIDER,
+      timeoutMs: resolved.MARKET_REQUEST_TIMEOUT_SECONDS * 1000,
+      ...options.market,
+    },
   });
 
   // Último: o envelope de erro envolve as respostas de todas as rotas e os

@@ -2,7 +2,6 @@ import type {
   MarketProviderId,
   MarketProviderSelection,
 } from "@chaintelescope/shared";
-import { createMarketChain, type ChainLogger } from "./chain.js";
 import type { MarketProvider } from "./provider.js";
 import { BinanceMarketProvider } from "./providers/binance.js";
 import { CoinbaseMarketProvider } from "./providers/coinbase.js";
@@ -31,14 +30,4 @@ export function resolveMarketProviders(
     return [PROVIDERS.binance(), PROVIDERS.coingecko(), PROVIDERS.coinbase()];
   }
   return [PROVIDERS[selection]()];
-}
-
-export function buildMarketChain(
-  selection: MarketProviderSelection,
-  logger: ChainLogger,
-  timeoutMs: number,
-) {
-  return createMarketChain(resolveMarketProviders(selection), logger, {
-    timeoutMs,
-  });
 }

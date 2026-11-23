@@ -86,6 +86,15 @@ const RESPONSES = {
     409: "E-mail already subscribed",
     422: "Payload validation failed",
   },
+  "GET /api/price-trend": {
+    200: "Price trend series",
+    422: "Payload validation failed",
+    429: "Rate limited",
+    503: "Market providers unavailable",
+  },
+  "GET /api/snapshot": {
+    503: "Snapshot route blocked until #122",
+  },
 };
 
 const ERROR_SCHEMA = {
@@ -152,6 +161,10 @@ function toJsonSchema(schema) {
     const schema = { type: "string" };
     if (limit("min") !== undefined) schema.minLength = limit("min");
     if (limit("max") !== undefined) schema.maxLength = limit("max");
+    const pattern = rules.find((rule) => rule.name === "pattern")?.args
+      ?.regex;
+    if (typeof pattern === "string")
+      schema.pattern = pattern.replace(/^\//, "").replace(/\/$/, "");
     if (rules.some((rule) => rule.name === "email")) schema.format = "email";
     if (description.flags?.only && Array.isArray(description.allow)) {
       schema.enum = description.allow;

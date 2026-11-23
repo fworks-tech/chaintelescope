@@ -1,4 +1,8 @@
-import type { MarketProviderId, Snapshot, TimeWindow } from "@chaintelescope/shared";
+import type {
+  MarketProviderId,
+  Snapshot,
+  TimeWindow,
+} from "@chaintelescope/shared";
 import type { MarketProvider } from "../provider.js";
 import { buildSeries, windowDays } from "../utils.js";
 
@@ -38,7 +42,8 @@ export class BinanceMarketProvider implements MarketProvider {
           dates.push(new Date(Number(row[0])).toISOString());
           prices.push(Number(row[4]));
         }
-        if (prices.length === 0) throw new Error(`binance empty series for ${asset}`);
+        if (prices.length === 0)
+          throw new Error(`binance empty series for ${asset}`);
         return buildSeries(asset, dates, prices, this.id);
       }),
     );

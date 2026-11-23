@@ -1,4 +1,8 @@
-import type { MarketProviderId, Snapshot, TimeWindow } from "@chaintelescope/shared";
+import type {
+  MarketProviderId,
+  Snapshot,
+  TimeWindow,
+} from "@chaintelescope/shared";
 
 export interface MarketProvider {
   readonly id: MarketProviderId;

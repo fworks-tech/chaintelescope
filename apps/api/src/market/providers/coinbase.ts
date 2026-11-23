@@ -1,4 +1,8 @@
-import type { MarketProviderId, Snapshot, TimeWindow } from "@chaintelescope/shared";
+import type {
+  MarketProviderId,
+  Snapshot,
+  TimeWindow,
+} from "@chaintelescope/shared";
 import type { MarketProvider } from "../provider.js";
 import { buildSeries, windowDays } from "../utils.js";
 
@@ -36,13 +40,18 @@ export class CoinbaseMarketProvider implements MarketProvider {
         if (!res.ok) throw new Error(`coinbase ${res.status} for ${asset}`);
         const rows = (await res.json()) as unknown[];
         const candles = rows
-          .filter((row): row is [number, number, number, number, number, number] =>
-            Array.isArray(row) && row.length >= 5,
+          .filter(
+            (row): row is [number, number, number, number, number, number] =>
+              Array.isArray(row) && row.length >= 5,
           )
-          .map((row) => ({ time: Number(row[0]) * 1000, close: Number(row[4]) }))
+          .map((row) => ({
+            time: Number(row[0]) * 1000,
+            close: Number(row[4]),
+          }))
           .sort((a, b) => a.time - b.time)
           .slice(-Math.max(days, 1));
-        if (candles.length === 0) throw new Error(`coinbase empty series for ${asset}`);
+        if (candles.length === 0)
+          throw new Error(`coinbase empty series for ${asset}`);
         return buildSeries(
           asset,
           candles.map((c) => new Date(c.time).toISOString()),

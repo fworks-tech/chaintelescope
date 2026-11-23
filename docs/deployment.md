@@ -25,18 +25,18 @@ cp .env.example .env
 
 Fill in the values:
 
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| `OPENAI_API_KEY` | For AI assistant | — | OpenAI-compatible API key |
-| `OPENAI_BASE_URL` | No | `https://api.openai.com/v1` | Provider base URL |
-| `OPENAI_MODEL` | No | `gpt-4o-mini` | Model name |
-| `OPENAI_TIMEOUT_SECONDS` | No | `15` | HTTP timeout in seconds |
-| `MARKET_PROVIDER` | No | `auto` | `auto`, `binance`, `coingecko`, `coinbase`, or `mock` |
-| `MARKET_REQUEST_TIMEOUT_SECONDS` | No | `10` | HTTP timeout for market calls (legacy; ccxt manages its own timeouts) |
-| `NEWS_FEED_URLS` | No | CoinDesk + Cointelegraph RSS | Comma-separated RSS/Atom URLs |
-| `NEWSLETTER_PROVIDER` | No | `stub` | Delivery adapter name |
-| `NEWSLETTER_API_KEY` | For non-stub | — | Provider credential |
-| `SENTRY_DSN` | For error tracking | — | Sentry project DSN |
+| Variable                         | Required           | Default                      | Purpose                                                                                           |
+| -------------------------------- | ------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| `OPENAI_API_KEY`                 | For AI assistant   | —                            | OpenAI-compatible API key                                                                         |
+| `OPENAI_BASE_URL`                | No                 | `https://api.openai.com/v1`  | Provider base URL                                                                                 |
+| `OPENAI_MODEL`                   | No                 | `gpt-4o-mini`                | Model name                                                                                        |
+| `OPENAI_TIMEOUT_SECONDS`         | No                 | `15`                         | HTTP timeout in seconds                                                                           |
+| `MARKET_PROVIDER`                | No                 | `auto`                       | `auto`, `binance`, `coingecko`, `coinbase`, or `mock`                                             |
+| `MARKET_REQUEST_TIMEOUT_SECONDS` | No                 | `10`                         | Per-provider market timeout; Node market chain returns 503 with `Retry-After` when providers fail |
+| `NEWS_FEED_URLS`                 | No                 | CoinDesk + Cointelegraph RSS | Comma-separated RSS/Atom URLs                                                                     |
+| `NEWSLETTER_PROVIDER`            | No                 | `stub`                       | Delivery adapter name                                                                             |
+| `NEWSLETTER_API_KEY`             | For non-stub       | —                            | Provider credential                                                                               |
+| `SENTRY_DSN`                     | For error tracking | —                            | Sentry project DSN                                                                                |
 
 See [configuration.md](configuration.md) for details.
 
@@ -180,13 +180,13 @@ For production deploys, add a deploy job that rebuilds and restarts the Docker s
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| App doesn't start | Port 8501 in use | `netstat -tulpn \| grep 8501`; kill conflicting process |
-| AI assistant returns fallback | No `OPENAI_API_KEY` | Set the env var and restart |
-| News shows mock headlines | Feeds unreachable | Check `NEWS_FEED_URLS` and network connectivity |
-| Price chart shows mock data | All exchange APIs down | Check provider status; market will auto-fallback to mock |
-| Docker build fails | Python dependency mismatch | `docker compose build --no-cache` to refresh layers |
+| Symptom                       | Cause                      | Fix                                                      |
+| ----------------------------- | -------------------------- | -------------------------------------------------------- |
+| App doesn't start             | Port 8501 in use           | `netstat -tulpn \| grep 8501`; kill conflicting process  |
+| AI assistant returns fallback | No `OPENAI_API_KEY`        | Set the env var and restart                              |
+| News shows mock headlines     | Feeds unreachable          | Check `NEWS_FEED_URLS` and network connectivity          |
+| Price chart shows mock data   | All exchange APIs down     | Check provider status; market will auto-fallback to mock |
+| Docker build fails            | Python dependency mismatch | `docker compose build --no-cache` to refresh layers      |
 
 ## Related
 

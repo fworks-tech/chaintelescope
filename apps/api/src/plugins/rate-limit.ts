@@ -92,6 +92,8 @@ export interface RateLimitRule {
 const DEFAULT_RULES: readonly RateLimitRule[] = [
   // Upload e leitura de scans: 30/min.
   { prefix: "/scans", capacity: 30, refillPerSec: 30 / 60 },
+  // Market routes são públicas e chamam provedores externos; 30/min por IP.
+  { prefix: "/api", capacity: 30, refillPerSec: 30 / 60 },
   // Login é a rota mais cara (Argon2id); 5/min por IP.
   { prefix: "/auth/login", capacity: 5, refillPerSec: 5 / 60 },
   { prefix: "/auth", capacity: 10, refillPerSec: 10 / 60 },

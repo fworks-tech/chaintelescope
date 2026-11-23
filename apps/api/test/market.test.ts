@@ -416,4 +416,209 @@ describe("fetchPriceTrend service parity (#138)", () => {
       ),
     ).rejects.toMatchObject({ code: "provider_chain_exhausted" });
   });
+
+  it("mock fallback uses UTC day boundaries for a boundary clock", async () => {
+    const clock = new Date("2026-01-30T02:30:00.000Z");
+    const result = await fetchPriceTrend(
+      "BTC",
+      30,
+      "30D",
+      "auto",
+      [
+        provider("binance", async () => {
+          throw new Error("down");
+        }),
+      ],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { onExhausted: "mock", now: () => clock },
+    );
+    expect(result.source).toBe("mock");
+    expect(result.dates[29]).toBe("2026-01-30T00:00:00.000Z");
+    expect(result.dates[0]).toBe("2026-01-01T00:00:00.000Z");
+  });
+
+  it("prototype-key asset returns finite mock prices", async () => {
+    const result = await fetchPriceTrend(
+      "constructor",
+      7,
+      "7D",
+      "mock",
+      [],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { now: () => new Date("2026-01-30T12:00:00.000Z") },
+    );
+    expect(result.source).toBe("mock");
+    expect(result.prices.every(Number.isFinite)).toBe(true);
+    expect(result.trend.every(Number.isFinite)).toBe(true);
+  });
+
+  it("falls through when provider returns series for a different asset", async () => {
+    const wrongAsset = provider("binance", async () => ({
+      series: [
+        {
+          asset: "ETH",
+          dates: ["2026-01-01T00:00:00.000Z"],
+          prices: [3200],
+          trend: [3200],
+          source: "binance",
+        },
+      ],
+      window: "30D" as TimeWindow,
+      provider: "binance" as const,
+    }));
+    const result = await fetchPriceTrend(
+      "BTC",
+      30,
+      "30D",
+      "binance",
+      [wrongAsset],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { onExhausted: "mock", now: () => new Date("2026-01-30T12:00:00.000Z") },
+    );
+    expect(result.source).toBe("mock");
+    expect(result.asset).toBe("BTC");
+  });
+
+  it("falls through when provider returns invalid dates instead of fabricating now", async () => {
+    const badDates = provider("binance", async () => ({
+      series: [
+        {
+          asset: "BTC",
+          dates: ["not-a-date", "2024-05-15T00:00:00.000Z"],
+          prices: [62000, 62500],
+          trend: [62000, 62250],
+          source: "binance",
+        },
+      ],
+      window: "24H" as TimeWindow,
+      provider: "binance" as const,
+    }));
+    const result = await fetchPriceTrend(
+      "BTC",
+      2,
+      "24H",
+      "binance",
+      [badDates],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { onExhausted: "mock", now: () => new Date("2026-01-30T12:00:00.000Z") },
+    );
+    expect(result.source).toBe("mock");
+    expect(result.dates).not.toContain("not-a-date");
+  });
+});
+
+describe("market chain snapshot validation (#138 hardening)", () => {
+  it("falls through when snapshot misses the requested asset", async () => {
+    const chain = createMarketChain(
+      [
+        provider("binance", async () => ({
+          series: [
+            {
+              asset: "ETH",
+              dates: ["2026-01-01T00:00:00.000Z"],
+              prices: [1],
+              trend: [1],
+              source: "binance",
+            },
+          ],
+          window: "30D",
+          provider: "binance",
+        })),
+        provider("coingecko", async () => snapshot("coingecko")),
+      ],
+      { warn: vi.fn() },
+      { timeoutMs: 50 },
+    );
+    await expect(
+      chain(["BTC"], "30D", new AbortController().signal),
+    ).resolves.toMatchObject({ provider: "coingecko" });
+  });
+
+  it("falls through on empty, non-finite, or malformed series data", async () => {
+    const bad: Snapshot[] = [
+      { series: [], window: "30D", provider: "binance" },
+      {
+        series: [
+          {
+            asset: "BTC",
+            dates: ["2026-01-01T00:00:00.000Z"],
+            prices: [],
+            trend: [],
+            source: "binance",
+          },
+        ],
+        window: "30D",
+        provider: "binance",
+      },
+      {
+        series: [
+          {
+            asset: "BTC",
+            dates: ["2026-01-01T00:00:00.000Z"],
+            prices: [Number.NaN],
+            trend: [1],
+            source: "binance",
+          },
+        ],
+        window: "30D",
+        provider: "binance",
+      },
+      {
+        series: [
+          {
+            asset: "BTC",
+            dates: ["bad-date"],
+            prices: [1],
+            trend: [1],
+            source: "binance",
+          },
+        ],
+        window: "30D",
+        provider: "binance",
+      },
+      {
+        series: [
+          {
+            asset: "BTC",
+            dates: ["2026-01-01T00:00:00.000Z"],
+            prices: [1, 2],
+            trend: [1],
+            source: "binance",
+          },
+        ],
+        window: "30D",
+        provider: "binance",
+      },
+      {
+        series: [
+          {
+            asset: "BTC",
+            dates: ["2026-01-01T00:00:00.000Z"],
+            prices: [1],
+            trend: [1],
+            source: "binance",
+          },
+        ],
+        window: "7D",
+        provider: "binance",
+      },
+    ];
+    for (const candidate of bad) {
+      const chain = createMarketChain(
+        [
+          provider("binance", async () => candidate),
+          provider("coingecko", async () => snapshot("coingecko")),
+        ],
+        { warn: vi.fn() },
+        { timeoutMs: 50 },
+      );
+      await expect(
+        chain(["BTC"], "30D", new AbortController().signal),
+      ).resolves.toMatchObject({ provider: "coingecko" });
+    }
+  });
 });
