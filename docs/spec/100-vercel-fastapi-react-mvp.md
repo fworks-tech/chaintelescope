@@ -1,5 +1,9 @@
 # Spec: Vercel FastAPI + React SPA (MVP)
 
+> Status: directory layout superseded by [ADR-0008](../adr/0008-monorepo-target-architecture.md).
+> The `frontend/` plan below is replaced by `apps/web/` (Vercel static) + `apps/python/`
+> (Vercel serverless). Behavior and acceptance criteria still apply; paths do not.
+
 ## Problem
 
 The project has a dual Streamlit + FastAPI architecture that cannot deploy to Vercel — the auto-detected `app.py` (Streamlit entrypoint) does not export a FastAPI instance. Vercel explicitly asks for `[tool.vercel] entrypoint = "src.api:app"`. Beyond this config fix, the architecture needs a forward path: a FastAPI-only deployment on Vercel with a modern SPA frontend, while keeping Streamlit intact as a local dev/fallback UI.
@@ -81,6 +85,7 @@ None.
 ## Migration Plan
 
 This MVP is the first step of a gradual migration:
+
 1. **MVP** (this spec) — FastAPI + React SPA with Dashboard, News, Risk, Assistant pages
 2. **Phase 2** — Add remaining pages (Newsletter, Alerts standalone), parity with Streamlit
 3. **Phase 3** — Deprecate Streamlit, remove `app.py` and `pages/`

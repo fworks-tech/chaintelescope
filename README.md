@@ -28,8 +28,10 @@ This project delivers a focused crypto analysis experience with:
 
 Two stacks live side by side during the migration:
 
-- **Python 3.11 + Streamlit** (repo root) — the working product today, and the reference implementation. Feature-frozen; still gets fixes.
-- **Node.js 20+ / TypeScript + Hapi.js** (`apps/api`) with a **React + Vite** client (`apps/web`) — the target architecture. Mid-migration: the API currently serves `GET /healthz` only, and `apps/web` is still a starter template.
+- **Python 3.11 + Streamlit** (`apps/python/` target; at repo root until PR 4) — the working product today, and the reference implementation. Feature-frozen; still gets fixes.
+- **Node.js 20+ / TypeScript + Hapi.js** (`apps/api`) with a **React + Vite** client (`apps/web`) — the target architecture. Mid-migration: the API serves auth, scans, newsletter, and `GET /api/price-trend` (`GET /api/snapshot` returns 503 until #122); `apps/web` is still a starter template.
+
+See [ADR-0008](docs/adr/0008-monorepo-target-architecture.md) for the multi-app target (`apps/api` on ECS + RDS, `apps/python` + `apps/web` on Vercel).
 
 `docs/port-inventory.md` tracks what has actually been ported, module by module.
 
@@ -158,7 +160,7 @@ On push to `main` and on pull requests to `main`, GitHub Actions runs the gates 
 | `lint-and-typecheck` | `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app) |
 | `test-workspaces` | `pnpm test` then `pnpm test:integration` — builds first, Vitest unit suites, then the `*.integration.test.ts` suites against the `postgres:16-alpine` service container. |
 | `build` | `pnpm -r build` across the monorepo |
-| `python-legacy` | Ruff lint + format check, `py_compile` and import smoke check, and the 74 Python unittest cases (including the Streamlit `AppTest` smoke run) |
+| `python-app` | Ruff lint + format check, `py_compile` and import smoke check, and the 74 Python unittest cases (including the Streamlit `AppTest` smoke run) |
 | `quality-gate` | Requires all four jobs above |
 
 Local equivalents: see **Quality gates** in [`AGENTS.md`](AGENTS.md).
@@ -167,18 +169,22 @@ CI does not start a browser or run Playwright screenshot comparisons yet. See th
 
 ## Project Layout
 
-- `app.py`, `pages/`, `src/` — Python/Streamlit app (working product, feature-frozen)
+- `apps/python/` (target; `app.py`, `pages/`, `src/`, `tests/` at root until PR 4) — Python/Streamlit app (working product, feature-frozen)
 - `apps/api/` — Hapi.js + TypeScript server (`src/main.ts` entrypoint)
 - `apps/web/` — React + Vite client (starter template, not yet wired to the API)
 - `packages/shared/` — runtime-free TypeScript contracts shared by server and client
-- `bench/` — benchmark scripts (worker threads vs main thread)
-- `tests/` — Python unittest suite
-- `docs/` — architecture, configuration, ADRs, port inventory
-- `legacy/README.md` — freeze policy for the Python app
+- `packages/openapi/` — generated OpenAPI spec (never hand-edit; `pnpm api:openapi`)
+- `infra/` (PR 7) — CDK TypeScript (ECS Fargate + RDS + ALB + alarms)
+- `bench/` — benchmark scripts (worker threads vs main thread) → `apps/api/bench/` in PR 3
+- `migrations/` — plain-SQL schema + runner → `apps/api/migrations/` in PR 3
+- `tests/` — Python unittest suite → `apps/python/tests/` in PR 4
+- `docs/` — architecture, configuration, ADRs, port inventory ([index](docs/README.md)); specs live in `docs/spec/` (canonical)
 - `CHANGELOG.md` — release history
 
 ## Documentation
 
+- [`docs/README.md`](docs/README.md) — docs index (start here)
+- [`docs/adr/0008-monorepo-target-architecture.md`](docs/adr/0008-monorepo-target-architecture.md) — multi-app target layout
 - [`CHANGELOG.md`](CHANGELOG.md) — release history
 - [`docs/Architecture.md`](docs/Architecture.md) — system structure and runtime flow
 - [`docs/configuration.md`](docs/configuration.md) — environment variables and secrets

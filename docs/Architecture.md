@@ -4,10 +4,10 @@ This document describes how ChainTelescope is structured today. For setup and ru
 
 ## Overview
 
-The repository holds two stacks during the migration:
+The repository holds two stacks during the migration (target: three deployable apps — see [ADR-0008](adr/0008-monorepo-target-architecture.md)):
 
-1. **Python / Streamlit** (working, feature-frozen) — entrypoint in [`app.py`](../app.py), routed pages under [`pages/`](../pages/), UI modules under [`src/`](../src/). The browser talks to a Streamlit server that reruns the entry script on interaction. This is what runs at the live URL today.
-2. **Node.js / TypeScript monorepo** (target, mid-migration) — Hapi.js API in [`apps/api`](../apps/api), React + Vite client in [`apps/web`](../apps/web), shared contracts in [`packages/shared`](../packages/shared). Today the API serves `GET /healthz` only and `apps/web` is still the Vite template.
+1. **Python / Streamlit** (working, feature-frozen; at repo root until PR 4, target `apps/python/`) — entrypoint in [`app.py`](../app.py), routed pages under [`pages/`](../pages/), UI modules under [`src/`](../src/). The browser talks to a Streamlit server that reruns the entry script on interaction. This is what runs at the live URL today.
+2. **Node.js / TypeScript monorepo** (target, mid-migration) — Hapi.js API in [`apps/api`](../apps/api), React + Vite client in [`apps/web`](../apps/web), shared contracts in [`packages/shared`](../packages/shared). The API serves auth, scans, newsletter, and `GET /api/price-trend` (`GET /api/snapshot` returns 503 until #122); `apps/web` is still the Vite template.
 
 [`docs/port-inventory.md`](port-inventory.md) records what has actually been ported, file by file. Treat it as the source of truth over any milestone label.
 
@@ -15,7 +15,9 @@ The product direction in [README.md](../README.md) calls for Python data pipelin
 
 ## Related documentation
 
+- [README.md](README.md) — docs index (start here)
 - [CHANGELOG.md](../CHANGELOG.md) — release history
+- [adr/0008-monorepo-target-architecture.md](adr/0008-monorepo-target-architecture.md) — multi-app target layout
 - [configuration.md](configuration.md) — environment variables and secrets
 - [source-inventory-m4.md](source-inventory-m4.md) — M4 source discovery research
 
@@ -158,11 +160,13 @@ CI and local setup install the full [`requirements.txt`](../requirements.txt) fo
 | [`app.py`](../app.py) | Streamlit UI entrypoint (working product today) |
 | [`pages/`](../pages/) | Streamlit routed pages |
 | [`src/`](../src/) | Python: FastAPI API, data layer, validation, logging |
-| [`apps/api/`](../apps/api/) | Hapi.js + TypeScript API (1 route today) |
+| [`apps/api/`](../apps/api/) | Hapi.js + TypeScript API (auth, scans, newsletter, `GET /api/price-trend`) |
 | [`apps/web/`](../apps/web/) | React + Vite client (starter template) |
 | [`packages/shared/`](../packages/shared/) | TypeScript contracts shared by API and client |
-| [`bench/`](../bench/) | Benchmark scripts (worker threads vs main thread) |
-| [`legacy/README.md`](../legacy/README.md) | Freeze policy for the Python app |
+| [`packages/openapi/`](../packages/openapi/) | Generated OpenAPI spec (never hand-edit) |
+| [`bench/`](../bench/) | Benchmark scripts (worker threads vs main thread) → `apps/api/bench/` in PR 3 |
+| [`migrations/`](../migrations/) | Plain-SQL schema + runner → `apps/api/migrations/` in PR 3 |
+| [`adr/0008-monorepo-target-architecture.md`](adr/0008-monorepo-target-architecture.md) | Multi-app target layout; Python freeze policy lives here |
 | [`requirements.txt`](../requirements.txt) | Python dependencies |
 | [`notebooks/`](../notebooks/) | Jupyter notebooks for EDA, strategies, and report generation |
 | [`docs/`](../docs/) | Architecture, configuration, ADRs, port inventory |
@@ -196,7 +200,7 @@ See `src/data/dashboard_query.py` for the `DashboardSnapshot` dataclass with 16 
   - `lint-and-typecheck` — `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app)
   - `test-workspaces` — `pnpm test` (builds first, then Vitest). A `postgres:16-alpine` service container is provisioned but not yet exercised by any test
   - `build` — `pnpm -r build`
-  - `python-legacy` — Ruff lint/format, `py_compile` + import smoke check, and the 74 Python unittest cases
+  - `python-app` — Ruff lint/format, `py_compile` + import smoke check, and the 74 Python unittest cases
   - `quality-gate` — requires all four
 - **Visual regression**: deferred. The planned pilot is Playwright snapshot checks against `streamlit run app.py` on localhost for the dashboard and one alternate route, with dynamic KPI and timestamp regions masked. CI does not run browser screenshots today.
 

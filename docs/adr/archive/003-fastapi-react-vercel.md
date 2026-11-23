@@ -52,6 +52,5 @@ The Vercel configuration is:
 ## References
 
 - [Spec: Vercel FastAPI + React SPA (MVP)](../spec/100-vercel-fastapi-react-mvp.md)
-- [Tasks: 100-vercel-fastapi-react-mvp](../../tasks/100-vercel-fastapi-react-mvp.md)
 - [Vercel Python docs](https://vercel.com/docs/functions/serverless-functions/runtimes/python)
-- [`src/api.py`](../../src/api.py) — existing FastAPI app
+- [`src/api.py`](../../src/api.py) — existing FastAPI app (moves to `apps/python/src/api.py` in PR 4 per ADR-0008)
