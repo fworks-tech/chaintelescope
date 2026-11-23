@@ -117,8 +117,9 @@ $env:CORS_ORIGINS = "http://localhost:3000,http://localhost:8501"
 node --env-file=apps/api/.env apps/api/dist/main.js
 ```
 
-The integration suites skip without `DATABASE_URL`; `server.test.ts`,
-`auth-session.test.ts`, `scans-routes.test.ts`, `matrix.test.ts` and the
+The DB suites are `test/*.integration.test.ts` and run only via
+`pnpm test:integration`, which fails without `DATABASE_URL`. `server.test.ts`,
+`auth-session.integration.test.ts`, `scans-routes.integration.test.ts`, `matrix.integration.test.ts` and the
 security suites set fixture values before importing `env.ts`. Those fixtures are
 public and must stay non-production.
 

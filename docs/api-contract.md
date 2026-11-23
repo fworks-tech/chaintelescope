@@ -3,7 +3,7 @@
 The canonical description of the HTTP surface is generated, not written by hand:
 
 - `packages/openapi/openapi.json` — OpenAPI 3.0 document produced from the Hapi route table and the Joi schemas in `packages/shared/src/validation.ts`.
-- `apps/api/test/matrix.test.ts` — the status matrix: every route × anonymous/user/admin/invalid payload/missing resource/conflict, with the route list cross-checked against `server.table()` so a new route without a row fails the suite.
+- `apps/api/test/matrix.integration.test.ts` — the status matrix: every route × anonymous/user/admin/invalid payload/missing resource/conflict, with the route list cross-checked against `server.table()` so a new route without a row fails the suite.
 
 Regenerate the document with:
 
@@ -42,7 +42,7 @@ CI (`build` job) runs the generator after `pnpm -r build` and fails on `git diff
 | `DELETE /scans/{id}`         | 401       | 403  | 204   | —               | 404              | —        |
 | `POST /newsletter/subscribe` | 201       | 201  | —     | 422             | —                | 409      |
 
-Every `429` from the token bucket (`#121`) is outside this matrix; it is covered by `test/rate-limit.test.ts` with a frozen clock. Every error body follows `{ error: { code, message, requestId }, details? }` from `#118`.
+Every `429` from the token bucket (`#121`) is outside this matrix; it is covered by `test/rate-limit.integration.test.ts` with a frozen clock. Every error body follows `{ error: { code, message, requestId }, details? }` from `#118`.
 
 ## Not registered
 

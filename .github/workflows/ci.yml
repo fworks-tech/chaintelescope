@@ -87,8 +87,11 @@ jobs:
           pnpm --filter @chaintelescope/api db:migrate:down
           pnpm --filter @chaintelescope/api db:migrate
 
-      - name: Run unit & integration tests
+      - name: Run unit tests
         run: pnpm test
+
+      - name: Run integration tests
+        run: pnpm test:integration
 
   build:
     name: Build Monorepo
