@@ -27,7 +27,6 @@ const querySchema = Joi.object({
   asset: Joi.string()
     .trim()
     .uppercase()
-    .max(20)
     .pattern(/^[A-Z0-9]{1,20}$/)
     .default("BTC"),
   days: Joi.number().integer().min(1).max(365).default(30),

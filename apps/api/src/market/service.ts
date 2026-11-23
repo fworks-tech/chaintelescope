@@ -63,6 +63,8 @@ function mockTrend(
 
 export async function fetchPriceTrend(
   asset: string,
+  // shortcut: days is accepted for Python /api/price-trend parity but the
+  // Node chain sizes series by timeWindow; align days/window semantics later.
   days: number,
   timeWindow: TimeWindow,
   marketSource: MarketProviderSelection,
@@ -109,12 +111,7 @@ export async function fetchPriceTrend(
     const exhausted =
       error instanceof ProviderChainExhaustedError ||
       (isDomainError(error) && error.code === "provider_chain_exhausted");
-    if (!exhausted) {
-      logger.warn(
-        { err: error, asset, marketSource },
-        "market price trend failed",
-      );
-    }
+    if (!exhausted) throw error;
   }
 
   if (onExhausted === "mock") {

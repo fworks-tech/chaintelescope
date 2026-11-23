@@ -161,6 +161,10 @@ function toJsonSchema(schema) {
     const schema = { type: "string" };
     if (limit("min") !== undefined) schema.minLength = limit("min");
     if (limit("max") !== undefined) schema.maxLength = limit("max");
+    const pattern = rules.find((rule) => rule.name === "pattern")?.args
+      ?.regex;
+    if (typeof pattern === "string")
+      schema.pattern = pattern.replace(/^\//, "").replace(/\/$/, "");
     if (rules.some((rule) => rule.name === "email")) schema.format = "email";
     if (description.flags?.only && Array.isArray(description.allow)) {
       schema.enum = description.allow;

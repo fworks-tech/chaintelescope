@@ -14,7 +14,9 @@
     "/scans": {
       "post": {
         "operationId": "post_scans",
-        "tags": ["scans"],
+        "tags": [
+          "scans"
+        ],
         "parameters": [],
         "responses": {
           "201": {
@@ -90,7 +92,9 @@
       },
       "get": {
         "operationId": "get_scans",
-        "tags": ["scans"],
+        "tags": [
+          "scans"
+        ],
         "parameters": [
           {
             "name": "cursor",
@@ -117,7 +121,13 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["pending", "running", "completed", "failed", "cancelled"]
+              "enum": [
+                "pending",
+                "running",
+                "completed",
+                "failed",
+                "cancelled"
+              ]
             }
           }
         ],
@@ -166,7 +176,9 @@
     "/auth/login": {
       "post": {
         "operationId": "post_auth_login",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "parameters": [],
         "responses": {
           "200": {
@@ -228,7 +240,9 @@
     "/auth/logout": {
       "post": {
         "operationId": "post_auth_logout",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "parameters": [],
         "responses": {
           "204": {
@@ -250,7 +264,9 @@
     "/auth/refresh": {
       "post": {
         "operationId": "post_auth_refresh",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "parameters": [],
         "responses": {
           "200": {
@@ -282,7 +298,9 @@
     "/auth/register": {
       "post": {
         "operationId": "post_auth_register",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "parameters": [],
         "responses": {
           "201": {
@@ -344,7 +362,9 @@
     "/newsletter/subscribe": {
       "post": {
         "operationId": "post_newsletter_subscribe",
-        "tags": ["newsletter"],
+        "tags": [
+          "newsletter"
+        ],
         "parameters": [],
         "responses": {
           "201": {
@@ -396,7 +416,9 @@
     "/scans/{id}/cancel": {
       "post": {
         "operationId": "post_scans_id_cancel",
-        "tags": ["scans"],
+        "tags": [
+          "scans"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -463,7 +485,9 @@
     "/healthz": {
       "get": {
         "operationId": "get_healthz",
-        "tags": ["health"],
+        "tags": [
+          "health"
+        ],
         "parameters": [],
         "responses": {
           "200": {
@@ -475,7 +499,9 @@
     "/api/price-trend": {
       "get": {
         "operationId": "get_api_price_trend",
-        "tags": ["market"],
+        "tags": [
+          "market"
+        ],
         "parameters": [
           {
             "name": "asset",
@@ -483,7 +509,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "maxLength": 20,
+              "pattern": "^[A-Z0-9]{1,20}$",
               "default": "BTC"
             }
           },
@@ -504,7 +530,12 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["24H", "7D", "30D", "90D"],
+              "enum": [
+                "24H",
+                "7D",
+                "30D",
+                "90D"
+              ],
               "default": "30D"
             }
           },
@@ -514,7 +545,13 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": ["auto", "binance", "coingecko", "coinbase", "mock"]
+              "enum": [
+                "auto",
+                "binance",
+                "coingecko",
+                "coinbase",
+                "mock"
+              ]
             }
           }
         ],
@@ -558,7 +595,9 @@
     "/api/snapshot": {
       "get": {
         "operationId": "get_api_snapshot",
-        "tags": ["market"],
+        "tags": [
+          "market"
+        ],
         "parameters": [],
         "responses": {
           "503": {
@@ -577,7 +616,9 @@
     "/auth/me": {
       "get": {
         "operationId": "get_auth_me",
-        "tags": ["auth"],
+        "tags": [
+          "auth"
+        ],
         "parameters": [],
         "responses": {
           "200": {
@@ -614,7 +655,9 @@
     "/scans/{id}": {
       "get": {
         "operationId": "get_scans_id",
-        "tags": ["scans"],
+        "tags": [
+          "scans"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -669,7 +712,9 @@
       },
       "delete": {
         "operationId": "delete_scans_id",
-        "tags": ["scans"],
+        "tags": [
+          "scans"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -731,7 +776,9 @@
             "bearerAuth": []
           }
         ],
-        "x-required-scope": ["admin"]
+        "x-required-scope": [
+          "admin"
+        ]
       }
     }
   },
@@ -749,7 +796,11 @@
         "properties": {
           "error": {
             "type": "object",
-            "required": ["code", "message", "requestId"],
+            "required": [
+              "code",
+              "message",
+              "requestId"
+            ],
             "properties": {
               "code": {
                 "type": "string"
@@ -777,7 +828,9 @@
             }
           }
         },
-        "required": ["error"]
+        "required": [
+          "error"
+        ]
       },
       "LoginPayload": {
         "type": "object",
@@ -793,7 +846,10 @@
           }
         },
         "additionalProperties": false,
-        "required": ["email", "password"]
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "RegisterPayload": {
         "type": "object",
@@ -809,7 +865,10 @@
           }
         },
         "additionalProperties": false,
-        "required": ["email", "password"]
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "NewsletterSubscriptionPayload": {
         "type": "object",
@@ -821,17 +880,26 @@
           },
           "frequency": {
             "type": "string",
-            "enum": ["Daily", "Weekly", "Biweekly"],
+            "enum": [
+              "Daily",
+              "Weekly",
+              "Biweekly"
+            ],
             "default": "Weekly"
           },
           "format": {
             "type": "string",
-            "enum": ["Summary", "Deep Dive"],
+            "enum": [
+              "Summary",
+              "Deep Dive"
+            ],
             "default": "Summary"
           }
         },
         "additionalProperties": false,
-        "required": ["email"]
+        "required": [
+          "email"
+        ]
       }
     }
   }
