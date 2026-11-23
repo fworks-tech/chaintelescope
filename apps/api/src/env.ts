@@ -35,6 +35,8 @@ export interface Environment {
   readonly SCAN_POLL_INTERVAL_MS: number;
   readonly SCAN_CONCURRENCY: number;
   readonly CORS_ORIGINS: string;
+  readonly MARKET_PROVIDER: "auto" | "binance" | "coingecko" | "coinbase" | "mock";
+  readonly MARKET_REQUEST_TIMEOUT_SECONDS: number;
 }
 
 /**
@@ -90,6 +92,10 @@ const envSchema = Joi.object<Environment>({
   CORS_ORIGINS: Joi.string()
     .default("http://localhost:3000,http://localhost:8501")
     .custom(validateCorsOrigins, "CORS allowlist"),
+  MARKET_PROVIDER: Joi.string()
+    .valid("auto", "binance", "coingecko", "coinbase", "mock")
+    .default("auto"),
+  MARKET_REQUEST_TIMEOUT_SECONDS: Joi.number().min(0.1).max(60).default(10),
 }).unknown(true);
 
 /**

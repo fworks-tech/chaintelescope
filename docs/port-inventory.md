@@ -21,9 +21,9 @@ Status legend:
 | `src/styles.py` | `apps/web` styling | `pending` | Tailwind is not installed. |
 | `src/data/dashboard_query.py` | `apps/api` query layer | `pending` | No repository or query layer. |
 | `src/data/assets.py` (108 symbols) | Postgres seed | `pending` | No schema, no migrations, no seed. |
-| `src/data/market/service.py` (fallback chain) | `apps/api` provider port | `pending` | No provider abstraction in Node. |
-| `src/data/market/ccxt_adapter.py` | provider adapter | `pending` | Python uses `ccxt`; Node has no adapter. |
-| `src/data/market/config.py`, `models.py`, `mock_market.py` | provider config/fixtures | `pending` | — |
+| `src/data/market/service.py` (fallback chain) | `apps/api/src/market/{provider,chain,index}.ts` | `partial` | Provider interface, ordered chain with timeout, mock provider and thin fetch adapters exist; no route consumes the chain yet and full Python payload parity is still open. |
+| `src/data/market/ccxt_adapter.py` | `apps/api/src/market/providers/*.ts` | `partial` | Thin fetch adapters for binance/coingecko/coinbase; no ccxt dependency. |
+| `src/data/market/config.py`, `models.py`, `mock_market.py` | `packages/shared/src/market.ts` + env | `partial` | `MARKET_PROVIDER`/timeout in env, shared Snapshot/TimeWindow types, deterministic mock provider. |
 | `src/data/news/ingestion.py` | `apps/api/src/ingest/news.ts` | `partial` | Canonical hashing and repo-backed `ON CONFLICT (content_hash) DO NOTHING` exist and are integration-tested, but no route or scheduler calls them and the fetch/parse stage is unwritten. |
 | `src/data/news/models.py` | `apps/api/src/ingest/news.ts` types | `partial` | `RawNewsItem`/`NewsRow` mirrored; no fetch pipeline. |
 | `src/data/alerts/rules.py` | alert evaluation | `pending` | — |
@@ -45,3 +45,4 @@ Status legend:
 | HTTP | `apps/api/src/routes/health.ts` | `ported` (1 route) |
 | DB access | `apps/api/src/db/{schema,tx,chunks,pool,migrate,analytics}.ts`, `db/repos/*`, `migrations/*.sql` e `apps/api/sql/*.sql` | `ported` — typed `DB`, `withTx`, repositories, fixture-tested analytics queries and schema tests |
 | Auth | `apps/api/src/auth/{password,throttle,tokens,session,strategy,routes}.ts`, `db/repos/auth.ts`, migrations `0003` + `0008` | `partial` — register/login/refresh/logout/me, JWT strategy and reuse detection; admin routes in #122 |
+| Market | `apps/api/src/market/{provider,chain,utils,index}.ts`, `providers/{binance,coingecko,coinbase,mock}.ts`, `packages/shared/src/market.ts` | `partial` — chain with timeout/hung-provider protection, mock + thin fetch adapters, env selection; no snapshot route or scheduler consumes it yet (#138) |
