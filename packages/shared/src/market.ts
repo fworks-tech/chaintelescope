@@ -35,3 +35,12 @@ export interface Snapshot {
 
 /** @deprecated Use Snapshot - kept as explicit alias while #138 lands. */
 export type MarketSnapshot = Snapshot;
+
+/** Single-asset price trend shape, parity with Python /api/price-trend. */
+export interface PriceTrend {
+  readonly asset: string;
+  readonly dates: readonly string[];
+  readonly prices: readonly number[];
+  readonly trend: readonly number[];
+  readonly source: MarketProviderId;
+}

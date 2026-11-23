@@ -25,12 +25,14 @@ pnpm --filter @chaintelescope/api start        # -> dist/main.js
 ## Quality gates (run before every PR)
 
 Python:
+
 1. `ruff check app.py src pages tests`
 2. `ruff format --check app.py src pages tests`
 3. `python -m py_compile app.py` + `python -c "import importlib; importlib.import_module('app')"`
 4. `python -m unittest discover -s tests -p 'test_*.py' -v` (74 tests, ~60 s)
 
 Node:
+
 1. `pnpm build` — must precede tests: `apps/api/test/worker-pool.test.ts` imports `../dist/**` and `@chaintelescope/shared` resolves to its `dist/`
 2. `pnpm -r typecheck` (shared, api, web) — needs `packages/shared` built first (`pnpm build:shared`), because types resolve through its `dist/`
 3. `pnpm -r lint` (oxlint on `apps/web`; the API has no lint yet)
@@ -53,7 +55,7 @@ Node:
   - `src/plugins/` — `validation.ts` (Joi + 422 `failAction`) and `errors.ts` (single error envelope, 500 opacity, 503 when `server.app.degraded`)
   - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets,auth}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
-  - `src/routes/` — `health.ts`, `scans.ts` (streamed upload, keyset list, cancel/delete) and `newsletter.ts`; `news`/`snapshot` are not registered until their data sources land
+  - `src/routes/` — `health.ts`, `scans.ts` (streamed upload, keyset list, cancel/delete), `newsletter.ts`, and `market.ts` (`GET /api/price-trend`, `GET /api/snapshot` returns 503 until non-market deps land); `news`/`alerts` are not registered until their data sources land
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
 - `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.integration.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
 - `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
