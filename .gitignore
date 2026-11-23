@@ -5,14 +5,12 @@ __pycache__/
 *.py[cod]
 .env
 .env.*
-.streamlit/secrets.toml
+**/.streamlit/secrets.toml
 /data/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .DS_Store
-frontend/dist/
-frontend/node_modules/
 node_modules/
 dist/
 *.tsbuildinfo

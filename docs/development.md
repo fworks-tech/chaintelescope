@@ -18,7 +18,7 @@ cd chain-telescope
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r apps/python/requirements.txt
 pip install ruff
 ```
 
@@ -31,7 +31,7 @@ pre-commit install
 ## Running the app
 
 ```powershell
-streamlit run app.py
+streamlit run apps/python/app.py
 ```
 
 Opens at `http://localhost:8501`.
@@ -58,33 +58,39 @@ Get-ChildItem -Path src, pages -Recurse -Filter *.py | ForEach-Object {
 }
 
 # 4. Tests
-python -m unittest discover -s tests -p 'test_*.py' -v
+cd apps/python && python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
 ## Project structure
 
 ```
 chain-telescope/
-├── app.py                  # Streamlit entrypoint (st.navigation)
-├── pages/                  # Page stubs → src/views/
-├── src/
-│   ├── app_shell.py        # Sidebar filter engine
-│   ├── styles.py           # Global CSS injection
-│   ├── logging.py          # Loguru sink configuration
-│   ├── components/         # UI components (10 modules)
-│   ├── views/              # View renderers composing components
-│   │   └── __init__.py     # Cached snapshot wrapper
-│   ├── data/               # Data layer
-│   │   ├── dashboard_query.py
-│   │   ├── assets.py       # 100+ asset symbol mappings
-│   │   ├── market/         # Exchange adapters (binance, coingecko, coinbase)
-│   │   ├── news/           # RSS ingestion
-│   │   ├── alerts/         # Alert rules engine
-│   │   └── newsletter/     # Subscription persistence
-│   └── validation/
-│       └── email.py        # Email validation
-├── notebooks/              # Jupyter notebooks (EDA, strategies, reports)
-├── tests/                  # Unittest files
+├── apps/
+│   └── python/             # Streamlit + FastAPI + ML/data layer (Vercel)
+│       ├── app.py          # Streamlit entrypoint (st.navigation)
+│       ├── pages/          # Page stubs → src/views/
+│       ├── src/
+│       │   ├── app_shell.py        # Sidebar filter engine
+│       │   ├── styles.py           # Global CSS injection
+│       │   ├── logging.py          # Loguru sink configuration
+│       │   ├── components/         # UI components (10 modules)
+│       │   ├── views/              # View renderers composing components
+│       │   │   └── __init__.py     # Cached snapshot wrapper
+│       │   ├── data/               # Data layer
+│       │   │   ├── dashboard_query.py
+│       │   │   ├── assets.py       # 100+ asset symbol mappings
+│       │   │   ├── market/         # Exchange adapters (binance, coingecko, coinbase)
+│       │   │   ├── news/           # RSS ingestion
+│       │   │   ├── alerts/         # Alert rules engine
+│       │   │   └── newsletter/     # Subscription persistence
+│       │   └── validation/
+│       │       └── email.py        # Email validation
+│       ├── notebooks/      # Jupyter notebooks (EDA, strategies, reports)
+│       ├── tests/          # Unittest files
+│       ├── requirements.txt
+│       └── pyproject.toml  # [tool.vercel] entrypoint = "src.api:app"
+├── apps/api/               # Hapi.js API (ECS Fargate + RDS)
+├── apps/web/               # React + Vite SPA (Vercel)
 ├── docs/                   # Documentation
 │   ├── Architecture.md
 │   ├── configuration.md
@@ -141,10 +147,10 @@ from src.data.market.service import fetch_price_trend
 
 ### Adding a new page
 
-1. Create `src/views/new_page_view.py` with `render_new_page()` function
-2. Create `pages/new_page.py` — thin stub importing the view
-3. Add route to `app.py` `st.navigation()` call
-4. Add component if needed in `src/components/`
+1. Create `apps/python/src/views/new_page_view.py` with `render_new_page()` function
+2. Create `apps/python/pages/new_page.py` — thin stub importing the view
+3. Add route to `apps/python/app.py` `st.navigation()` call
+4. Add component if needed in `apps/python/src/components/`
 
 ### Adding a new market provider
 

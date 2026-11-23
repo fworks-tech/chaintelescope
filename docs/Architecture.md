@@ -6,7 +6,7 @@ This document describes how ChainTelescope is structured today. For setup and ru
 
 The repository holds two stacks during the migration (target: three deployable apps — see [ADR-0008](adr/0008-monorepo-target-architecture.md)):
 
-1. **Python / Streamlit** (working, feature-frozen; at repo root until PR 4, target `apps/python/`) — entrypoint in [`app.py`](../app.py), routed pages under [`pages/`](../pages/), UI modules under [`src/`](../src/). The browser talks to a Streamlit server that reruns the entry script on interaction. This is what runs at the live URL today.
+1. **Python / Streamlit** (working, feature-frozen; at repo root until PR 4, target `apps/python/`) — entrypoint in [`app.py`](../app.py), routed pages under [`pages/`](../pages/), UI modules under [`src/`](../apps/python/src/). The browser talks to a Streamlit server that reruns the entry script on interaction. This is what runs at the live URL today.
 2. **Node.js / TypeScript monorepo** (target, mid-migration) — Hapi.js API in [`apps/api`](../apps/api), React + Vite client in [`apps/web`](../apps/web), shared contracts in [`packages/shared`](../packages/shared). The API serves auth, scans, newsletter, and `GET /api/price-trend` (`GET /api/snapshot` returns 503 until #122); `apps/web` is still the Vite template.
 
 [`docs/port-inventory.md`](port-inventory.md) records what has actually been ported, file by file. Treat it as the source of truth over any milestone label.
@@ -43,7 +43,7 @@ flowchart LR
   QueryLayer --> Providers
 ```
 
-On each run, `app.py` configures the page, applies global styles, and delegates to `st.navigation` routes in `pages/`. Shared sidebar filters come from [`src/app_shell.py`](../src/app_shell.py). Dashboard panels consume a `DashboardSnapshot` from [`src/data/dashboard_query.py`](../src/data/dashboard_query.py).
+On each run, `apps/python/app.py` configures the page, applies global styles, and delegates to `st.navigation` routes in `apps/python/pages/`. Shared sidebar filters come from [`src/app_shell.py`](../apps/python/src/app_shell.py). Dashboard panels consume a `DashboardSnapshot` from [`src/data/dashboard_query.py`](../apps/python/src/data/dashboard_query.py).
 
 ### Node.js API (target stack, in progress)
 
@@ -67,28 +67,28 @@ What exists: `buildServer()` composes plugins (`db-pool`, `health`), `env.ts` va
 
 | Path | Role |
 |------|------|
-| [`app.py`](../app.py) | Streamlit entrypoint and navigation shell |
-| [`pages/`](../pages/) | Routed Dashboard, Alerts, News, Risk, and Newsletter pages |
-| [`src/app_shell.py`](../src/app_shell.py) | Sidebar filter engine (time window, watchlist, market source, trend filter) |
-| [`src/styles.py`](../src/styles.py) | Global CSS injection |
-| [`src/components/dashboard_header.py`](../src/components/dashboard_header.py) | Greeting and UTC snapshot caption |
-| [`src/components/kpi_row.py`](../src/components/kpi_row.py) | KPI card row |
-| [`src/components/price_trend.py`](../src/components/price_trend.py) | Price trend chart panel |
-| [`src/components/trending_report.py`](../src/components/trending_report.py) | Trending report table |
-| [`src/components/risk_graph.py`](../src/components/risk_graph.py) | Risk bar chart panel |
-| [`src/components/feed_panels.py`](../src/components/feed_panels.py) | Alerts and news snapshot panels |
-| [`src/components/assistant.py`](../src/components/assistant.py) | In-app GPT assistant with safe fallbacks |
-| [`src/components/newsletter.py`](../src/components/newsletter.py) | Newsletter subscription form and saved subscriptions |
-| [`src/data/dashboard_query.py`](../src/data/dashboard_query.py) | Filter-aware dashboard snapshot assembly |
-| [`src/data/mock_market.py`](../src/data/mock_market.py) | Mock market series, table, and risk inputs |
-| [`src/data/market/`](../src/data/market/) | Market provider adapters and fallback orchestration |
-| [`src/data/news/`](../src/data/news/) | Feed ingestion and normalized feed models |
-| [`src/data/alerts/rules.py`](../src/data/alerts/rules.py) | MVP threshold rules for alert output |
-| [`src/data/newsletter/`](../src/data/newsletter/) | Local subscription persistence and stub delivery |
-| [`src/validation/email.py`](../src/validation/email.py) | Newsletter email validation |
-| [`src/logging.py`](../src/logging.py) | Structured loguru sink configuration |
-| [`src/views/__init__.py`](../src/views/__init__.py) | Cached dashboard snapshot wrapper (`@st.cache_data(ttl=30)`) |
-| [`notebooks/`](../notebooks/) | Jupyter notebooks for EDA, strategy backtesting, and report generation |
+| [`apps/python/app.py`](../apps/python/app.py) | Streamlit entrypoint and navigation shell |
+| [`apps/python/pages/`](../apps/python/pages/) | Routed Dashboard, Alerts, News, Risk, and Newsletter pages |
+| [`src/app_shell.py`](../apps/python/src/app_shell.py) | Sidebar filter engine (time window, watchlist, market source, trend filter) |
+| [`src/styles.py`](../apps/python/src/styles.py) | Global CSS injection |
+| [`src/components/dashboard_header.py`](../apps/python/src/components/dashboard_header.py) | Greeting and UTC snapshot caption |
+| [`src/components/kpi_row.py`](../apps/python/src/components/kpi_row.py) | KPI card row |
+| [`src/components/price_trend.py`](../apps/python/src/components/price_trend.py) | Price trend chart panel |
+| [`src/components/trending_report.py`](../apps/python/src/components/trending_report.py) | Trending report table |
+| [`src/components/risk_graph.py`](../apps/python/src/components/risk_graph.py) | Risk bar chart panel |
+| [`src/components/feed_panels.py`](../apps/python/src/components/feed_panels.py) | Alerts and news snapshot panels |
+| [`src/components/assistant.py`](../apps/python/src/components/assistant.py) | In-app GPT assistant with safe fallbacks |
+| [`src/components/newsletter.py`](../apps/python/src/components/newsletter.py) | Newsletter subscription form and saved subscriptions |
+| [`src/data/dashboard_query.py`](../apps/python/src/data/dashboard_query.py) | Filter-aware dashboard snapshot assembly |
+| [`src/data/mock_market.py`](../apps/python/src/data/mock_market.py) | Mock market series, table, and risk inputs |
+| [`src/data/market/`](../apps/python/src/data/market/) | Market provider adapters and fallback orchestration |
+| [`src/data/news/`](../apps/python/src/data/news/) | Feed ingestion and normalized feed models |
+| [`src/data/alerts/rules.py`](../apps/python/src/data/alerts/rules.py) | MVP threshold rules for alert output |
+| [`src/data/newsletter/`](../apps/python/src/data/newsletter/) | Local subscription persistence and stub delivery |
+| [`src/validation/email.py`](../apps/python/src/validation/email.py) | Newsletter email validation |
+| [`src/logging.py`](../apps/python/src/logging.py) | Structured loguru sink configuration |
+| [`src/views/__init__.py`](../apps/python/src/views/__init__.py) | Cached dashboard snapshot wrapper (`@st.cache_data(ttl=30)`) |
+| [`apps/python/notebooks/`](../apps/python/notebooks/) | Jupyter notebooks for EDA, strategy backtesting, and report generation |
 
 Import flow: routed pages import view renderers and shared filters. Views call `load_dashboard_snapshot(time_window, watchlist, market_source, trend_filter)` and pass the snapshot into components.
 
@@ -96,7 +96,7 @@ Import flow: routed pages import view renderers and shared filters. Views call `
 
 ### Sidebar
 
-The sidebar shows branding, a time-window select box, and a watchlist multiselect. Navigation is owned by `st.navigation` in `app.py`, not by a decorative radio group.
+The sidebar shows branding, a time-window select box, and a watchlist multiselect. Navigation is owned by `st.navigation` in `apps/python/app.py`, not by a decorative radio group.
 
 ### Routed pages
 
@@ -110,11 +110,11 @@ Styling uses injected CSS for cards and panels; layout uses Streamlit columns.
 
 ## Filter-to-data flow
 
-1. Sidebar widgets in `src/app_shell.py` return `time_window` and `watchlist`.
+1. Sidebar widgets in `apps/python/src/app_shell.py` return `time_window` and `watchlist`.
 2. `load_dashboard_snapshot()` maps the time window to a day count and selects the primary watchlist asset for the price chart.
-3. Market adapters in `src/data/market/` attempt remote providers, then fall back to mock series in `src/data/mock_market.py`.
-4. News ingestion in `src/data/news/` loads RSS/Atom feeds or fallback items and filters by watchlist tags/titles when possible.
-5. Alert rules in `src/data/alerts/rules.py` evaluate threshold conditions over the selected price series.
+3. Market adapters in `apps/python/src/data/market/` attempt remote providers, then fall back to mock series in `apps/python/src/data/mock_market.py`.
+4. News ingestion in `apps/python/src/data/news/` loads RSS/Atom feeds or fallback items and filters by watchlist tags/titles when possible.
+5. Alert rules in `apps/python/src/data/alerts/rules.py` evaluate threshold conditions over the selected price series.
 6. Components and the assistant consume the same snapshot so visible panels and fallback chat context stay aligned.
 
 ## Data today vs planned
@@ -151,15 +151,15 @@ M4 source discovery for market, feed, investor, and developer inputs is document
 | `pydantic` | Market and feed models | Validated config and API models |
 | `python-dotenv` | Local provider and newsletter configuration | Local and deployment secrets |
 
-CI and local setup install the full [`requirements.txt`](../requirements.txt) for the Python app; the Node workspaces install through `pnpm` (see [README.md](../README.md)).
+CI and local setup install the full [`requirements.txt`](../apps/python/requirements.txt) for the Python app; the Node workspaces install through `pnpm` (see [README.md](../README.md)).
 
 ## Repository boundaries
 
 | Path | Role |
 |------|------|
-| [`app.py`](../app.py) | Streamlit UI entrypoint (working product today) |
-| [`pages/`](../pages/) | Streamlit routed pages |
-| [`src/`](../src/) | Python: FastAPI API, data layer, validation, logging |
+| [`apps/python/app.py`](../apps/python/app.py) | Streamlit UI entrypoint (working product today) |
+| [`apps/python/pages/`](../apps/python/pages/) | Streamlit routed pages |
+| [`apps/python/src/`](../apps/python/src/) | Python: FastAPI API, data layer, validation, logging |
 | [`apps/api/`](../apps/api/) | Hapi.js + TypeScript API (auth, scans, newsletter, `GET /api/price-trend`) |
 | [`apps/web/`](../apps/web/) | React + Vite client (starter template) |
 | [`packages/shared/`](../packages/shared/) | TypeScript contracts shared by API and client |
@@ -167,32 +167,32 @@ CI and local setup install the full [`requirements.txt`](../requirements.txt) fo
 | [`apps/api/bench/`](../apps/api/bench/) | Benchmark scripts (worker threads vs main thread) |
 | [`apps/api/migrations/`](../apps/api/migrations/) | Plain-SQL schema + runner |
 | [`adr/0008-monorepo-target-architecture.md`](adr/0008-monorepo-target-architecture.md) | Multi-app target layout; Python freeze policy lives here |
-| [`requirements.txt`](../requirements.txt) | Python dependencies |
-| [`notebooks/`](../notebooks/) | Jupyter notebooks for EDA, strategies, and report generation |
+| [`apps/python/requirements.txt`](../apps/python/requirements.txt) | Python dependencies |
+| [`apps/python/notebooks/`](../apps/python/notebooks/) | Jupyter notebooks for EDA, strategies, and report generation |
 | [`docs/`](../docs/) | Architecture, configuration, ADRs, port inventory |
 
 ## Snapshot assembly flow
 
-Filters from `src/app_shell.py` flow into `load_dashboard_snapshot()` which orchestrates:
+Filters from `apps/python/src/app_shell.py` flow into `load_dashboard_snapshot()` which orchestrates:
 
-1. Market providers in `src/data/market/` (Binance → CoinGecko → Coinbase → mock fallback)
-2. News ingestion in `src/data/news/` (RSS/Atom feeds → fallback items)
-3. Alert rules in `src/data/alerts/rules.py` (drawdown and momentum thresholds)
-4. Newsletter persistence in `src/data/newsletter/` (local JSON store + stub delivery)
+1. Market providers in `apps/python/src/data/market/` (Binance → CoinGecko → Coinbase → mock fallback)
+2. News ingestion in `apps/python/src/data/news/` (RSS/Atom feeds → fallback items)
+3. Alert rules in `apps/python/src/data/alerts/rules.py` (drawdown and momentum thresholds)
+4. Newsletter persistence in `apps/python/src/data/newsletter/` (local JSON store + stub delivery)
 
-See `src/data/dashboard_query.py` for the `DashboardSnapshot` dataclass with 16 fields.
+See `apps/python/src/data/dashboard_query.py` for the `DashboardSnapshot` dataclass with 16 fields.
 
 ## Issue mapping
 
 | Issue | Repository surface |
 |-------|-------------------|
-| [#12](https://github.com/fworks-tech/chain-telescope/issues/12) | `app.py`, `pages/`, `src/views/` |
-| [#14](https://github.com/fworks-tech/chain-telescope/issues/14) | `src/app_shell.py`, `src/data/dashboard_query.py` |
-| [#15](https://github.com/fworks-tech/chain-telescope/issues/15) | `src/data/market/` |
-| [#16](https://github.com/fworks-tech/chain-telescope/issues/16) | `src/data/news/` |
-| [#17](https://github.com/fworks-tech/chain-telescope/issues/17) | `src/data/alerts/rules.py` |
-| [#18](https://github.com/fworks-tech/chain-telescope/issues/18) | `src/data/newsletter/` |
-| [#13](https://github.com/fworks-tech/chain-telescope/issues/13) | `.github/workflows/ci.yml`, `tests/test_app_smoke.py` |
+| [#12](https://github.com/fworks-tech/chain-telescope/issues/12) | `apps/python/app.py`, `apps/python/pages/`, `apps/python/src/views/` |
+| [#14](https://github.com/fworks-tech/chain-telescope/issues/14) | `apps/python/src/app_shell.py`, `apps/python/src/data/dashboard_query.py` |
+| [#15](https://github.com/fworks-tech/chain-telescope/issues/15) | `apps/python/src/data/market/` |
+| [#16](https://github.com/fworks-tech/chain-telescope/issues/16) | `apps/python/src/data/news/` |
+| [#17](https://github.com/fworks-tech/chain-telescope/issues/17) | `apps/python/src/data/alerts/rules.py` |
+| [#18](https://github.com/fworks-tech/chain-telescope/issues/18) | `apps/python/src/data/newsletter/` |
+| [#13](https://github.com/fworks-tech/chain-telescope/issues/13) | `.github/workflows/ci.yml`, `apps/python/tests/test_app_smoke.py` |
 
 ## Automation
 
@@ -202,7 +202,7 @@ See `src/data/dashboard_query.py` for the `DashboardSnapshot` dataclass with 16 
   - `build` — `pnpm -r build`
   - `python-app` — Ruff lint/format, `py_compile` + import smoke check, and the 74 Python unittest cases
   - `quality-gate` — requires all four
-- **Visual regression**: deferred. The planned pilot is Playwright snapshot checks against `streamlit run app.py` on localhost for the dashboard and one alternate route, with dynamic KPI and timestamp regions masked. CI does not run browser screenshots today.
+- **Visual regression**: deferred. The planned pilot is Playwright snapshot checks against `streamlit run apps/python/app.py` on localhost for the dashboard and one alternate route, with dynamic KPI and timestamp regions masked. CI does not run browser screenshots today.
 
 ## Evolution
 

@@ -8,4 +8,4 @@ if (-not (Test-Path $Python)) {
 }
 
 Set-Location $RepoRoot
-& $Python -m streamlit run app.py @args
+& $Python -m streamlit run apps/python/app.py @args

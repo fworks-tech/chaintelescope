@@ -4,11 +4,11 @@ This document lists optional environment variables and Streamlit secrets for Cha
 
 ## Loading order
 
-1. Streamlit secrets in `.streamlit/secrets.toml` when present
+1. Streamlit secrets in `apps/python/.streamlit/secrets.toml` when present
 2. Environment variables from the shell or a local `.env` file loaded by `python-dotenv`
 3. Built-in defaults in code
 
-Do not commit secrets, `.env` files, or `.streamlit/secrets.toml`.
+Do not commit secrets, `.env` files, or `apps/python/.streamlit/secrets.toml`.
 
 ## Assistant provider
 
@@ -28,7 +28,7 @@ When credentials are missing or provider calls fail, the assistant returns a loc
 | `MARKET_PROVIDER`                | No       | `auto`  | `auto`, `binance`, `coingecko`, `coinbase`, or `mock` (sidebar Source filter overrides this per session)                                   |
 | `MARKET_REQUEST_TIMEOUT_SECONDS` | No       | `10`    | Per-provider timeout for Python and Node market requests; Node chain returns 503 with `Retry-After` when all providers fail or are invalid |
 
-`auto` tries Binance, then CoinGecko, then Coinbase, then mock series from `src/data/mock_market.py`. Exchange endpoints are managed internally by `ccxt`.
+`auto` tries Binance, then CoinGecko, then Coinbase, then mock series from `apps/python/src/data/mock_market.py`. Exchange endpoints are managed internally by `ccxt`.
 
 ## News feeds
 
@@ -50,7 +50,7 @@ Subscriptions are stored in `newsletter_subscriptions.json` under `NEWSLETTER_DA
 
 ## Local data directory
 
-Runtime newsletter files live under `data/` at the repository root by default. That path is gitignored. Application code under `src/data/` is source, not runtime storage.
+Runtime newsletter files live under `data/` at the repository root by default. That path is gitignored. Application code under `apps/python/src/data/` is source, not runtime storage.
 
 ## Example `.env`
 

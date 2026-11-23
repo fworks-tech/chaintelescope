@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-APP_PATH = REPO_ROOT / "app.py"
+APP_PATH = REPO_ROOT / "apps" / "python" / "app.py"
 
 
 def resolve_python() -> Path:

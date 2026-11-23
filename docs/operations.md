@@ -83,7 +83,7 @@ If `SENTRY_DSN` is configured, errors in the Streamlit app and background worker
 | Path | Contents | Backup strategy |
 |------|----------|----------------|
 | `data/newsletter_subscriptions.json` | User subscriptions | Daily via cron |
-| `.streamlit/secrets.toml` | Secrets (if using file-based) | Manual, encrypted |
+| `apps/python/.streamlit/secrets.toml` | Secrets (if using file-based) | Manual, encrypted |
 | `.env` | Environment variables | Manual, encrypted |
 
 ### Automated backup

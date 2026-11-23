@@ -82,6 +82,13 @@ hasheyes/
 
 None.
 
+## Path mapping (post-PR 4)
+
+`apps/python/` is the Vercel project root. Prefix every repo-root Python path above with `apps/python/`
+(`app.py` → `apps/python/app.py`, `src/` → `apps/python/src/`, `pages/` → `apps/python/pages/`,
+`requirements.txt` / `pyproject.toml` / `notebooks/` / `tests/` likewise). Root `vercel.json` is deleted;
+the entrypoint stays `[tool.vercel] entrypoint = "src.api:app"` in `apps/python/pyproject.toml`.
+
 ## Migration Plan
 
 This MVP is the first step of a gradual migration:
