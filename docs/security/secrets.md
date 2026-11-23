@@ -44,7 +44,7 @@ login.
 - Production values live only in the platform secret store, injected as
   environment variables. Never in git, a Docker image layer, a log line, a
   ticket, or a chat message.
-- `.env` and `.streamlit/secrets.toml` are gitignored; `.env.example` contains
+- `.env` and `apps/python/.streamlit/secrets.toml` are gitignored; `.env.example` contains
   placeholders only.
 - CI uses fixture values. A production pepper or JWT secret in CI is a leak.
 - The pino logger redacts `authorization`, `cookie` and `set-cookie`; `server.ts`

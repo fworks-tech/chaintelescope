@@ -10,11 +10,11 @@ Do not describe the Node side as a finished port. `docs/port-inventory.md` is th
 ## Quick start
 
 ```powershell
-# Python app (works today)
+# Python app (works today; lives in apps/python/)
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-streamlit run app.py
+pip install -r apps/python/requirements.txt
+streamlit run apps/python/app.py
 
 # Node API (needs a DATABASE_URL, ARGON2_PEPPER and JWT_ACCESS_SECRET; see apps/api/.env.example)
 pnpm install
@@ -24,7 +24,7 @@ pnpm --filter @chaintelescope/api start        # -> dist/main.js
 
 ## Quality gates (run before every PR)
 
-Python:
+Python (run from `apps/python/`):
 
 1. `ruff check app.py src pages tests`
 2. `ruff format --check app.py src pages tests`
@@ -64,11 +64,11 @@ Node:
 
 Python:
 
-- `app.py` — Streamlit entrypoint (`st.navigation`), `pages/` thin stubs → `src/views/` → `src/components/`
-- `src/api.py` — FastAPI, 7 endpoints (the Node port covers none of them yet)
-- `src/data/` — dashboard query, market providers via `ccxt_adapter.py`, news ingestion, alerts, newsletter
-- `src/data/assets.py` — 100 asset symbols with provider ID mappings
-- `tests/` — unittest only
+- `apps/python/app.py` — Streamlit entrypoint (`st.navigation`), `apps/python/pages/` thin stubs → `apps/python/src/views/` → `apps/python/src/components/`
+- `apps/python/src/api.py` — FastAPI, 7 endpoints (the Node port covers none of them yet)
+- `apps/python/src/data/` — dashboard query, market providers via `ccxt_adapter.py`, news ingestion, alerts, newsletter
+- `apps/python/src/data/assets.py` — 100 asset symbols with provider ID mappings
+- `apps/python/tests/` — unittest only
 
 ## Conventions
 

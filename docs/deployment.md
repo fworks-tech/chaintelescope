@@ -147,8 +147,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt
-      - run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - run: pip install -r apps/python/requirements.txt
+      - run: cd apps/python && python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
 For production deploys, add a deploy job that rebuilds and restarts the Docker service on your VPS via SSH or a webhook.

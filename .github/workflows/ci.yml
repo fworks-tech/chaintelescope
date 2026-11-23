@@ -124,6 +124,9 @@ jobs:
   python-app:
     name: Python app
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/python
     steps:
       - uses: actions/checkout@v4
 

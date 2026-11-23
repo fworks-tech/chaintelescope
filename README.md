@@ -42,7 +42,7 @@ See [ADR-0008](docs/adr/0008-monorepo-target-architecture.md) for the multi-app 
 
 ## Quick Start
 
-Clone the repository and create a virtual environment from the repository root.
+Clone the repository and create a virtual environment from the repository root, then run the Python app from `apps/python/`.
 
 Windows (PowerShell):
 
@@ -50,8 +50,8 @@ Windows (PowerShell):
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-streamlit run app.py
+pip install -r apps/python/requirements.txt
+streamlit run apps/python/app.py
 ```
 
 macOS / Linux:
@@ -60,8 +60,8 @@ macOS / Linux:
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-streamlit run app.py
+pip install -r apps/python/requirements.txt
+streamlit run apps/python/app.py
 ```
 
 Open the local URL shown in the terminal (default: http://localhost:8501).
@@ -91,12 +91,12 @@ Gates: `pnpm -r typecheck`, `pnpm -r lint`, `pnpm test` (builds first — the No
 
 Confirm the app behaves as expected before opening a pull request.
 
-- [ ] `streamlit run app.py` starts without import errors
+- [ ] `streamlit run apps/python/app.py` starts without import errors
 - [ ] Dashboard, Alerts, News, Risk, and Newsletter routes render in the browser
 - [ ] Newsletter subscribe shows success for a valid email and an error for invalid input
-- [ ] `python -m unittest discover -s tests -p 'test_*.py'` passes (74 tests)
-- [ ] `ruff check app.py src pages tests` and `ruff format --check app.py src pages tests` pass when Ruff is installed locally
-- [ ] `python -m unittest tests/test_source_inventory_note.py` passes for the M4 source inventory note contract
+- [ ] `python -m unittest discover -s apps/python/tests -t apps/python -p 'test_*.py'` passes (74 tests)
+- [ ] `ruff check apps/python` and `ruff format --check apps/python` pass when Ruff is installed locally
+- [ ] `python -m unittest discover -s apps/python/tests -t apps/python -p test_source_inventory_note.py` passes for the M4 source inventory note contract
 - [ ] `pnpm test` passes for the Node workspaces
 
 ### M4 source inventory note
@@ -104,7 +104,7 @@ Confirm the app behaves as expected before opening a pull request.
 The planning note in [`docs/source-inventory-m4.md`](docs/source-inventory-m4.md) is guarded by local doc-contract tests:
 
 ```bash
-python -m unittest tests/test_source_inventory_note.py
+python -m unittest discover -s apps/python/tests -t apps/python -p 'test_source_inventory_note.py'
 ```
 
 ## AI Assistant (MVP)
@@ -141,8 +141,8 @@ If credentials are missing, rate-limited, or provider calls fail, the assistant 
 
 ### Assistant validation
 
-- `python -m py_compile app.py src/components/assistant.py tests/test_assistant.py`
-- `python -m unittest tests/test_assistant.py`
+- `python -m py_compile apps/python/app.py apps/python/src/components/assistant.py apps/python/tests/test_assistant.py`
+- `cd apps/python && python -m unittest discover -s tests -p 'test_assistant.py' -v`
 
 ### Current limitations
 - Market and feed providers fall back to mock or cached-safe output when remote configuration is unset or requests fail
@@ -211,14 +211,14 @@ System structure, runtime flow, data boundaries, and planned evolution are docum
 - [ ] Clone the repository and `cd` into the root
 - [ ] Install Python 3.11
 - [ ] Create and activate a virtual environment
-- [ ] Upgrade `pip` and install `requirements.txt`
+- [ ] Upgrade `pip` and install `apps/python/requirements.txt`
 
 ### Run and smoke test
-- [ ] Run `streamlit run app.py`
+- [ ] Run `streamlit run apps/python/app.py`
 - [ ] Confirm the dashboard loads in the browser
 - [ ] Confirm charts and tables render
 - [ ] Exercise newsletter subscribe with valid and invalid email
-- [ ] Run `python -m py_compile app.py`
+- [ ] Run `python -m py_compile apps/python/app.py`
 
 ### Before opening a PR
 - [ ] Choose change type and scope in the pull request template
