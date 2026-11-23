@@ -13,6 +13,7 @@ import { secureHeadersPlugin } from "./plugins/secure-headers.js";
 import { failAction, validationPlugin } from "./plugins/validation.js";
 import type { ScanRow } from "./db/schema.js";
 import { healthPlugin } from "./routes/health.js";
+import { marketPlugin, type MarketRouteOptions } from "./routes/market.js";
 import { newsletterPlugin } from "./routes/newsletter.js";
 import { scansPlugin } from "./routes/scans.js";
 import { ScanCanceller } from "./scans/cancellation.js";
@@ -39,6 +40,8 @@ export interface BuildServerOptions {
   readonly scanSourceFor?: (scan: ScanRow) => ScanSource | undefined;
   /** Injeta relógio/limites nos testes; produção usa os defaults. */
   readonly rateLimit?: RateLimitOptions;
+  /** Injeta providers no teste para manter as rotas de market determinísticas. */
+  readonly market?: MarketRouteOptions;
 }
 
 export async function buildServer(
@@ -102,6 +105,10 @@ export async function buildServer(
   });
 
   await server.register([healthPlugin, scansPlugin, newsletterPlugin]);
+  await server.register({
+    plugin: marketPlugin,
+    options: options.market ?? {},
+  });
 
   // Último: o envelope de erro envolve as respostas de todas as rotas e os
   // headers de segurança entram no objeto final, depois da substituição.

@@ -107,3 +107,11 @@ export class ServiceUnavailableError extends DomainError {
     });
   }
 }
+
+export class ProviderChainExhaustedError extends DomainError {
+  constructor(message = "All market providers failed", retryAfterSeconds = 30) {
+    super("provider_chain_exhausted", message, 503, {
+      headers: { "retry-after": String(retryAfterSeconds) },
+    });
+  }
+}

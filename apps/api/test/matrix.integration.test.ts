@@ -11,6 +11,7 @@ import { signAccessToken } from "../src/auth/tokens.js";
 import { AuthRepo } from "../src/db/repos/auth.js";
 import { migrate } from "../src/db/migrate.js";
 import { ScansRepo } from "../src/db/repos/scans.js";
+import { MockMarketProvider } from "../src/market/index.js";
 import { makeDb } from "./helpers/db.js";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -18,7 +19,8 @@ process.env["DATABASE_URL"] ??= DATABASE_URL;
 process.env["ARGON2_PEPPER"] ??=
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const JWT_SECRET =
-  process.env["JWT_ACCESS_SECRET"] ?? "test-only-access-secret-0123456789abcdef";
+  process.env["JWT_ACCESS_SECRET"] ??
+  "test-only-access-secret-0123456789abcdef";
 process.env["JWT_ACCESS_SECRET"] = JWT_SECRET;
 
 const { buildServer } = await import("../src/server.js");
@@ -86,6 +88,13 @@ describe.skipIf(!DATABASE_URL)("route status matrix", () => {
 
     ctx.server = await buildServer(undefined, {
       rateLimit: { enabled: false },
+      market: {
+        providers: [
+          new MockMarketProvider({
+            now: () => new Date("2026-01-30T00:00:00.000Z"),
+          }),
+        ],
+      },
     });
     await ctx.server.initialize();
 
@@ -451,6 +460,39 @@ describe.skipIf(!DATABASE_URL)("route status matrix", () => {
             method: "POST",
             url: "/newsletter/subscribe",
             payload: { email: "matrix-news@example.com" },
+          }),
+        },
+      },
+      {
+        method: "GET",
+        route: "/api/price-trend",
+        expected: { anonymous: 200, user: 200, invalidPayload: 422 },
+        request: {
+          anonymous: () => ({
+            method: "GET",
+            url: "/api/price-trend?asset=BTC&days=30&window=30D&source=mock",
+          }),
+          user: () => ({
+            method: "GET",
+            url: "/api/price-trend?asset=BTC&days=30&window=30D&source=mock",
+            headers: userAuth(ctx),
+          }),
+          invalidPayload: () => ({
+            method: "GET",
+            url: "/api/price-trend?window=BAD",
+          }),
+        },
+      },
+      {
+        method: "GET",
+        route: "/api/snapshot",
+        expected: { anonymous: 503, user: 503 },
+        request: {
+          anonymous: () => ({ method: "GET", url: "/api/snapshot" }),
+          user: () => ({
+            method: "GET",
+            url: "/api/snapshot",
+            headers: userAuth(ctx),
           }),
         },
       },
