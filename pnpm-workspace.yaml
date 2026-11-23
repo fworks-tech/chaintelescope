@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "infra"
 allowBuilds:
   # argon2 ships prebuilt binaries through node-gyp-build; the install script
   # fetches/links them. Without it, `require("argon2")` throws on load.

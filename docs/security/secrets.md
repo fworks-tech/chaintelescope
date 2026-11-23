@@ -12,6 +12,7 @@ the tests are non-production fixtures and must never be reused.
 | Variable | Secret? | Read by | Why | Rotation |
 |---|---|---|---|---|
 | `DATABASE_URL` | **Yes** (contains the DB password) | `db/pool.ts`, `db/migrate.ts` | Authenticates to PostgreSQL; includes the password | Change the role password, update the secret, rolling restart |
+| `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | **Yes** (`PGPASSWORD`) | `env-db.ts` (composes `DATABASE_URL` at boot) | ECS pattern: Secret values cannot be concatenated at synth time; `DATABASE_URL` wins when both are set | Same as `DATABASE_URL` |
 | `JWT_ACCESS_SECRET` | **Yes** | `auth/tokens.ts` (`signAccessToken`), `auth/strategy.ts` | HS256 key for access tokens; a holder can forge `admin` tokens | Set a new value, deploy. Old access tokens fail for at most `JWT_ACCESS_TTL` (15 min) |
 | `ARGON2_PEPPER` | **Yes, critical** | `auth/password.ts` (via `routes.ts`) | Mixed into every password before Argon2id; a stolen database alone is not enough to attack hashes offline | Requires a code change or a forced reset; see below |
 | `CORS_ORIGINS` | No (integrity-sensitive) | `server.ts` | Browser allowlist; a wrong value breaks or widens the client surface | Update, deploy; `*` is refused at boot |
@@ -105,6 +106,10 @@ token digests (not usable directly), newsletter e-mails, scan metadata.
 
 The runtime currently uses the same `DATABASE_URL` for migrations as for
 queries; a least-privilege app role (no DDL) is not implemented.
+On ECS the task injects `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE`
+and `apps/api/src/env-db.ts` composes the URL at boot; a full `DATABASE_URL`
+always wins when both are present. The PG parts carry the same sensitivity
+as `DATABASE_URL` — the password part authenticates to PostgreSQL.
 
 ## Local and CI
 

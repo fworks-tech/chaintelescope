@@ -167,6 +167,7 @@ CI and local setup install the full [`requirements.txt`](../apps/python/requirem
 | [`apps/api/bench/`](../apps/api/bench/) | Benchmark scripts (worker threads vs main thread) |
 | [`apps/api/migrations/`](../apps/api/migrations/) | Plain-SQL schema + runner |
 | [`adr/0008-monorepo-target-architecture.md`](adr/0008-monorepo-target-architecture.md) | Multi-app target layout; Python freeze policy lives here |
+| [`../infra/README.md`](../infra/README.md) | AWS baseline (ECS Fargate + RDS + ALB + alarms), deploy runbook, WA notes |
 | [`apps/python/requirements.txt`](../apps/python/requirements.txt) | Python dependencies |
 | [`apps/python/notebooks/`](../apps/python/notebooks/) | Jupyter notebooks for EDA, strategies, and report generation |
 | [`docs/`](../docs/) | Architecture, configuration, ADRs, port inventory |
