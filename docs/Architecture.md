@@ -6,8 +6,8 @@ This document describes how ChainTelescope is structured today. For setup and ru
 
 The repository holds two stacks during the migration (target: three deployable apps — see [ADR-0008](adr/0008-monorepo-target-architecture.md)):
 
-1. **Python / Streamlit** (working, feature-frozen; at repo root until PR 4, target `apps/python/`) — entrypoint in [`app.py`](../app.py), routed pages under [`pages/`](../pages/), UI modules under [`src/`](../apps/python/src/). The browser talks to a Streamlit server that reruns the entry script on interaction. This is what runs at the live URL today.
-2. **Node.js / TypeScript monorepo** (target, mid-migration) — Hapi.js API in [`apps/api`](../apps/api), React + Vite client in [`apps/web`](../apps/web), shared contracts in [`packages/shared`](../packages/shared). The API serves auth, scans, newsletter, and `GET /api/price-trend` (`GET /api/snapshot` returns 503 until #122); `apps/web` is still the Vite template.
+1. **Python / Streamlit** (working, feature-frozen in `apps/python/`) — entrypoint in [`app.py`](../apps/python/app.py), routed pages under [`pages/`](../apps/python/pages/), UI modules under [`src/`](../apps/python/src/). The browser talks to a Streamlit server that reruns the entry script on interaction. This is what runs at the live URL today.
+2. **Node.js / TypeScript monorepo** (target, mid-migration) — Hapi.js API in [`apps/api`](../apps/api), React + Vite client in [`apps/web`](../apps/web), shared contracts in [`packages/shared`](../packages/shared). The API serves auth, scans, newsletter, and `GET /api/price-trend` (`GET /api/snapshot` returns 503 until #122); `apps/web` is a shell (router + dashboard + typed client), not yet at parity.
 
 [`docs/port-inventory.md`](port-inventory.md) records what has actually been ported, file by file. Treat it as the source of truth over any milestone label.
 
@@ -61,7 +61,7 @@ flowchart LR
   Hapi -.->|schema not created yet| DB
 ```
 
-What exists: `buildServer()` composes plugins (`db-pool`, `health`), `env.ts` validates the environment at import time, and `hashing/` + `workers/` provide the non-blocking scan path. What does not exist yet: migrations, any domain route, any query, auth. See [ADR-0001](adr/0001-node-ts-refactor.md) for the cutover decision and [ADR-0004](adr/0004-postgres-over-json-files.md) for the persistence direction.
+What exists: `buildServer()` composes plugins (`db-pool`, `health`), `env.ts` validates the environment at import time, `hashing/` + `workers/` provide the non-blocking scan path, and the route surface covers health, auth, scans, newsletter, and `GET /api/price-trend` (see `apps/api/test/matrix.integration.test.ts` for the pinned status matrix). What does not exist yet: `GET /api/snapshot` parity (returns 503 until news/alerts/kpi/risk land in #122), `news`/`alerts` routes, and a market-data scheduler. See [ADR-0001](adr/0001-node-ts-refactor.md) for the cutover decision and [ADR-0004](adr/0004-postgres-over-json-files.md) for the persistence direction.
 
 ## Module map
 
@@ -198,7 +198,7 @@ See `apps/python/src/data/dashboard_query.py` for the `DashboardSnapshot` datacl
 
 - **CI** ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)): on push to `main` and on any pull request, runs five jobs:
   - `lint-and-typecheck` — `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app)
-  - `test-workspaces` — `pnpm test` (builds first, then Vitest). A `postgres:16-alpine` service container is provisioned but not yet exercised by any test
+  - `test-workspaces` — `pnpm test` (builds first, then Vitest unit suites), then `pnpm test:integration` against the `postgres:16-alpine` service container (migrations round-tripped up/down/up first)
   - `build` — `pnpm -r build`
   - `python-app` — Ruff lint/format, `py_compile` + import smoke check, and the 74 Python unittest cases
   - `quality-gate` — requires all four
@@ -211,6 +211,6 @@ Near-term architecture tracked in GitHub milestones (`Refactor M1`–`M6`):
 - Create the Postgres schema and ports the scan/ingest path onto it
 - Port the FastAPI surface to Hapi.js routes with Joi contracts and Boom errors
 - Add OWASP-compliant auth (Argon2id + rotating refresh tokens)
-- Replace the Vite template with the real React client and Redux Toolkit state
+- Grow the React shell (now router + dashboard + typed client) into the real client, with Redux Toolkit state if cross-page state demands it
 - Ship profiling evidence (V8 profiles, event-loop lag, load-test SLOs) alongside the code
 - Retire the Streamlit pages once the React client reaches feature parity

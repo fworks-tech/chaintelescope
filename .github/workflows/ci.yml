@@ -40,6 +40,11 @@ jobs:
       - name: Lint workspaces
         run: pnpm -r lint
 
+      - name: Docs drift check
+        run: |
+          node --test scripts/check-docs.test.mjs
+          node scripts/check-docs.mjs
+
   test-workspaces:
     name: Test API & Workspaces
     runs-on: ubuntu-latest

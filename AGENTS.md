@@ -2,7 +2,7 @@
 
 One repo, two stacks (target: three deployable apps — see [ADR-0008](docs/adr/0008-monorepo-target-architecture.md)):
 
-- **Python 3.11 / Streamlit (`apps/python/` target; at repo root until PR 4)** — the only working product today. Frozen for features, still gets bug fixes.
+- **Python 3.11 / Streamlit (`apps/python/`)** — the only working product today. Frozen for features, still gets bug fixes.
 - **Node.js 20+ / TypeScript monorepo in `apps/` + `packages/`** — the target architecture, mid-migration. Right now it serves auth, scans, newsletter, and `GET /api/price-trend`; `GET /api/snapshot` returns 503 until #122.
 
 Do not describe the Node side as a finished port. `docs/port-inventory.md` is the honest scorecard; regenerate its status column from the code before claiming parity.
@@ -75,7 +75,7 @@ Python:
 - **Commits:** Conventional Commits, lowercase imperative subject.
 - **Python:** ruff, line-length 100, rules `E,F,I,UP,B` (ignore `E501`), double quotes; unittest only — no pytest fixtures or decorators.
 - **Node:** TypeScript strict + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`, NodeNext ESM (import with `.js` suffix), Vitest in `apps/api/test/*.test.ts` (DB suites: `*.integration.test.ts`), Prettier (`pnpm format`).
-- **Docs:** ADRs in `docs/adr/`; anything superseded moves to `docs/adr/archive/` instead of being rewritten.
+- **Docs:** ADRs in `docs/adr/`; anything superseded moves to `docs/adr/archive/` instead of being rewritten. `node scripts/check-docs.mjs` (tested by `node --test scripts/check-docs.test.mjs`, enforced in CI) fails on unresolvable relative links or ADRs/specs missing from `docs/README.md`.
 
 ## Config & secrets
 
@@ -107,10 +107,10 @@ Python:
 - `scans.asset_symbol` has no FK to `assets` on purpose: scans outlive the asset registry, and #114's coverage query is what surfaces orphaned symbols.
 - `POST /scans` requires a bearer token and records the subject as `requestor`; `GET`/cancel also require a token, and `DELETE` requires the `admin` scope. It streams `application/octet-stream` into `scanStream`, then persists the scan and artifact; the row goes `pending -> running -> completed` inside the request because a synchronous upload has no daemon to claim it. `scan_artifacts.content_hash` is globally unique, so re-uploading the same bytes reuses the first artifact row (the second scan has no artifact of its own). Newsletter subscription stays public.
 - `GET /scans` paginates on the opaque cursor from `packages/shared/src/cursor.ts` (base64url of `{createdAt, id}`); an invalid cursor is 400 `invalid_cursor`, an id that is not a UUID is 404 `scan_not_found` instead of a Postgres 22P02.
-- `news` and `snapshot` routes are deliberately absent: the news ingest has no scheduler and the market provider port does not exist. `POST /newsletter/subscribe` uses `newsletter_subscriptions` (0009) so duplicate e-mail is a 409 from the unique index.
+- `news` routes are deliberately absent: the news ingest has no scheduler. `GET /api/snapshot` returns 503 until non-market deps land in #122 (the market provider chain itself is ported — see `market.ts`). `POST /newsletter/subscribe` uses `newsletter_subscriptions` (0009) so duplicate e-mail is a 409 from the unique index.
 - `kysely` is pinned to `^0.28` because 0.29+ declares `engines.node >= 22`; the repo, `.nvmrc` and CI target Node 20. Moving to Node 22 (then kysely 0.29) is a separate chore.
 - `ScansRepo.list` paginates on the tuple `(created_at, id)` — a timestamp-only cursor silently drops rows that share an instant.
 - `hapi-pino` is registered in `buildServer` (`silent` in tests); it redacts `authorization`, `cookie` and `set-cookie`. `request.log` reaches the destination from there.
-- `apps/web` is a Vite starter template; the React surface is greenfield, not a partial port.
+- `apps/web` is a shell (router + dashboard + typed price-trend client); the React surface is greenfield beyond that, not a partial port.
 - The bench deliberately measures caller-observed lag; its printed conclusion does not match its own numbers (pool p99 is worse than main thread). Fix the methodology before quoting it.
 - `.pre-commit-config.yaml` and `.devcontainer/` no longer exist; `scripts/pr-skill.py` remains the PR helper.
