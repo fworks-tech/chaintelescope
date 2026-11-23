@@ -175,8 +175,8 @@ CI does not start a browser or run Playwright screenshot comparisons yet. See th
 - `packages/shared/` — runtime-free TypeScript contracts shared by server and client
 - `packages/openapi/` — generated OpenAPI spec (never hand-edit; `pnpm api:openapi`)
 - `infra/` (PR 7) — CDK TypeScript (ECS Fargate + RDS + ALB + alarms)
-- `bench/` — benchmark scripts (worker threads vs main thread) → `apps/api/bench/` in PR 3
-- `migrations/` — plain-SQL schema + runner → `apps/api/migrations/` in PR 3
+- `apps/api/bench/` — benchmark scripts (worker threads vs main thread)
+- `apps/api/migrations/` — plain-SQL schema + runner (`pnpm db:migrate`)
 - `tests/` — Python unittest suite → `apps/python/tests/` in PR 4
 - `docs/` — architecture, configuration, ADRs, port inventory ([index](docs/README.md)); specs live in `docs/spec/` (canonical)
 - `CHANGELOG.md` — release history

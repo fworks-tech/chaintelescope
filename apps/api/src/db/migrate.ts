@@ -1,6 +1,7 @@
 /**
- * @fileoverview Runner de migrações em SQL puro: aplica `migrations/*.sql` em ordem
- * lexical, uma transação por arquivo, registrando o que já rodou em `schema_migrations`.
+ * @fileoverview Runner de migrações em SQL puro: aplica `apps/api/migrations/*.sql`
+ * em ordem lexical, uma transação por arquivo, registrando o que já rodou em
+ * `schema_migrations`.
  * @module api/db/migrate
  */
 
@@ -9,11 +10,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Pool, PoolClient } from "pg";
 
-/** Diretório das migrações na raiz do repositório (dist/db -> raiz, e src/db -> raiz). */
+/** Diretório das migrações do workspace da API (src/db -> apps/api, e dist/db -> apps/api). */
 export const MIGRATIONS_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
   "..",
   "..",
   "migrations",

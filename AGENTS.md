@@ -59,7 +59,7 @@ Node:
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
 - `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.integration.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
 - `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
-- `bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI; moves to `apps/api/bench/` in PR 3
+- `apps/api/bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
 - `docs/spec/` — canonical specs (`tasks/` retired in ADR-0008)
 
 Python:
@@ -90,7 +90,7 @@ Python:
 - `LoginThrottle` is in-memory and per process; a second API instance has separate counters. Moving to Redis is a separate chore, noted in `docs/security/passwords.md`.
 - Refresh rotation revokes the whole family when an already-rotated token is replayed. Both the stolen and the current token die; the user logs in again. Cookie is `Path=/auth`, so only the auth routes receive it.
 - `GET /auth/me` and the `jwt` strategy exist, but there is no admin route yet (`/admin/*` lands in #122). Scope enforcement is proven in `test/auth-session.integration.test.ts` with a test-registered route.
-- No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). DB suites are `apps/api/test/*.integration.test.ts`, excluded from `pnpm test`; `pnpm test:integration` fails fast without `DATABASE_URL` and disables file parallelism because they share one schema.
+- No migrations are pending: `apps/api/migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). DB suites are `apps/api/test/*.integration.test.ts`, excluded from `pnpm test`; `pnpm test:integration` fails fast without `DATABASE_URL` and disables file parallelism because they share one schema.
 - `apps/api/src/plugins/validation.ts` sets Joi as Hapi's validator and the global `failAction`: a Joi schema error is 422 with `{ path, type }` details only, while unparseable JSON is 400 from Hapi's parser before the schema runs. Auth routes use `RegisterPayloadSchema`/`LoginPayloadSchema`; `CreateScanPayloadSchema` waits for #122.
 - Every error leaves through `plugins/errors.ts` as `{ error: { code, message, requestId }, details? }`. Domain errors carry stable codes (`duplicate_email`, `no_token`, `insufficient_scope`, `semantic_validation`, ...); Hapi/framework Boom errors map by status. A non-Boom throw is 500 with a generic message and a `request.log` entry tagged `internal`. 2xx bodies are untouched.
 - `server.app.degraded = true` short-circuits every request to 503 `db_pool_saturated` + `Retry-After: 5`; the pool probe that sets it lands in M5-I24.
