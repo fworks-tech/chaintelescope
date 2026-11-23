@@ -83,7 +83,7 @@ node --env-file=apps/api/.env.example apps/api/dist/main.js   # needs Postgres; 
 curl http://localhost:3000/healthz
 ```
 
-Gates: `pnpm -r typecheck`, `pnpm -r lint`, `pnpm test` (builds first — the Node tests import compiled output).
+Gates: `pnpm -r typecheck`, `pnpm -r lint`, `pnpm test` (builds first — the Node tests import compiled output), and `pnpm test:integration` with a `DATABASE_URL`.
 
 ## Validation
 
@@ -156,7 +156,7 @@ On push to `main` and on pull requests to `main`, GitHub Actions runs the gates 
 | Job | What it enforces |
 |-----|------------------|
 | `lint-and-typecheck` | `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app) |
-| `test-workspaces` | `pnpm test` — builds first, then Vitest (16 tests). A `postgres:16-alpine` service container is provisioned for the integration tests that land with the schema work; no test uses it yet. |
+| `test-workspaces` | `pnpm test` then `pnpm test:integration` — builds first, Vitest unit suites, then the `*.integration.test.ts` suites against the `postgres:16-alpine` service container. |
 | `build` | `pnpm -r build` across the monorepo |
 | `python-legacy` | Ruff lint + format check, `py_compile` and import smoke check, and the 74 Python unittest cases (including the Streamlit `AppTest` smoke run) |
 | `quality-gate` | Requires all four jobs above |

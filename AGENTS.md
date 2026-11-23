@@ -34,9 +34,10 @@ Node:
 1. `pnpm build` — must precede tests: `apps/api/test/worker-pool.test.ts` imports `../dist/**` and `@chaintelescope/shared` resolves to its `dist/`
 2. `pnpm -r typecheck` (shared, api, web) — needs `packages/shared` built first (`pnpm build:shared`), because types resolve through its `dist/`
 3. `pnpm -r lint` (oxlint on `apps/web`; the API has no lint yet)
-4. `pnpm test` (= `pnpm build && pnpm -r test`)
+4. `pnpm test` (= `pnpm build && pnpm -r test`) — unit suites only
+5. `pnpm test:integration` — needs `DATABASE_URL`; fails fast without it
 
-CI (`.github/workflows/ci.yml`) jobs: `lint-and-typecheck`, `test-workspaces` (Postgres 16 service container; migrations are round-tripped before the DB suites run), `build`, `python-legacy`, and `quality-gate` which requires all four.
+CI (`.github/workflows/ci.yml`) jobs: `lint-and-typecheck`, `test-workspaces` (Postgres 16 service container; migrations are round-tripped, then unit and integration suites run), `build`, `python-legacy`, and `quality-gate` which requires all four.
 
 ## Project structure
 
@@ -54,7 +55,7 @@ Node:
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
   - `src/routes/` — `health.ts`, `scans.ts` (streamed upload, keyset list, cancel/delete) and `newsletter.ts`; `news`/`snapshot` are not registered until their data sources land
 - `apps/web` — Vite + React 19 template, untouched splash page; no router, no API client, no state layer
-- `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
+- `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.integration.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
 - `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
 - `bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
 - `legacy/README.md` — freeze policy for the Python app
@@ -71,7 +72,7 @@ Python:
 
 - **Commits:** Conventional Commits, lowercase imperative subject.
 - **Python:** ruff, line-length 100, rules `E,F,I,UP,B` (ignore `E501`), double quotes; unittest only — no pytest fixtures or decorators.
-- **Node:** TypeScript strict + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`, NodeNext ESM (import with `.js` suffix), Vitest in `apps/api/test/*.test.ts`, Prettier (`pnpm format`).
+- **Node:** TypeScript strict + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`, NodeNext ESM (import with `.js` suffix), Vitest in `apps/api/test/*.test.ts` (DB suites: `*.integration.test.ts`), Prettier (`pnpm format`).
 - **Docs:** ADRs in `docs/adr/`; anything superseded moves to `docs/adr/archive/` instead of being rewritten.
 
 ## Config & secrets
@@ -86,8 +87,8 @@ Python:
 - `ARGON2_PEPPER` and `JWT_ACCESS_SECRET` are required at boot. The pepper feeds `src/auth/password.ts`; the secret signs 15-minute access tokens. `argon2` needs its install script (`allowBuilds: argon2` in `pnpm-workspace.yaml`) — pnpm blocks it by default and `import "argon2"` then fails at load.
 - `LoginThrottle` is in-memory and per process; a second API instance has separate counters. Moving to Redis is a separate chore, noted in `docs/security/passwords.md`.
 - Refresh rotation revokes the whole family when an already-rotated token is replayed. Both the stolen and the current token die; the user logs in again. Cookie is `Path=/auth`, so only the auth routes receive it.
-- `GET /auth/me` and the `jwt` strategy exist, but there is no admin route yet (`/admin/*` lands in #122). Scope enforcement is proven in `test/auth-session.test.ts` with a test-registered route.
-- No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). Integration tests skip without `DATABASE_URL`; `apps/api/vitest.config.ts` disables file parallelism because the DB suites share one schema.
+- `GET /auth/me` and the `jwt` strategy exist, but there is no admin route yet (`/admin/*` lands in #122). Scope enforcement is proven in `test/auth-session.integration.test.ts` with a test-registered route.
+- No migrations are pending: `migrations/` holds the v1 schema and `pnpm db:migrate` applies it (runner in `apps/api/src/db/migrate.ts`). DB suites are `apps/api/test/*.integration.test.ts`, excluded from `pnpm test`; `pnpm test:integration` fails fast without `DATABASE_URL` and disables file parallelism because they share one schema.
 - `apps/api/src/plugins/validation.ts` sets Joi as Hapi's validator and the global `failAction`: a Joi schema error is 422 with `{ path, type }` details only, while unparseable JSON is 400 from Hapi's parser before the schema runs. Auth routes use `RegisterPayloadSchema`/`LoginPayloadSchema`; `CreateScanPayloadSchema` waits for #122.
 - Every error leaves through `plugins/errors.ts` as `{ error: { code, message, requestId }, details? }`. Domain errors carry stable codes (`duplicate_email`, `no_token`, `insufficient_scope`, `semantic_validation`, ...); Hapi/framework Boom errors map by status. A non-Boom throw is 500 with a generic message and a `request.log` entry tagged `internal`. 2xx bodies are untouched.
 - `server.app.degraded = true` short-circuits every request to 503 `db_pool_saturated` + `Retry-After: 5`; the pool probe that sets it lands in M5-I24.
@@ -96,7 +97,7 @@ Python:
 - Rate limiting is a per-process token bucket (`plugins/rate-limit.ts`): `/scans` 30/min, `/auth/login` 5/min, other `/auth/*` 10/min, keyed by `user:<id>` when authenticated and `ip:<addr>` otherwise. `/healthz` and `/readyz` are exempt; `OPTIONS` preflights never consume a token. A Redis backend swaps in behind the `RateLimiter` interface.
 - Schema and TypeScript type are bound by `Joi.object<T, true>` (strict key map), not generated: a missing/extra key or wrong schema kind fails typecheck. There is no `shared:types` codegen step, deliberately (Joi 18 supports `StandardSchemaV1`, and `joi-to-typescript` still peers on Joi 17).
 - SQL lives only in `apps/api/src/db/`: services and ingestion take a repository (`NewsRepo`, `ScansRepo`, ...), never a pool. `grep -rn "selectFrom\|insertInto\|\.query(" apps/api/src --include=*.ts | grep -v "src/db/"` must stay empty.
-- `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.test.ts`, but no route calls them yet.
+- `apps/api/src/ingest/*` compiles and both `ingestNewsItem` and `ingestSnapshot` are exercised by `test/repos.integration.test.ts`, but no route calls them yet.
 - `apps/api/src/scans/*` compiles and has database coverage, but nothing claims a scan in production yet: `buildServer` only registers the daemon when `scanSourceFor` is supplied, and no fetcher exists for `feed`/`snapshot`. Uploads get their digest in the route (#122), not the daemon.
 - The analytics SQL lives in `apps/api/sql/` and is read at runtime by `src/db/analytics.ts` (`../../sql/` resolves from both `src/db` and `dist/db`). `apps/api/package.json` whitelists `dist` and `sql` under `files`, which is what makes `pnpm deploy` (and the Docker image) ship the queries — dropping that field breaks analytics in production only.
 - `ScanDaemon.start()` runs the boot reconciliation (`UPDATE scans SET status='failed', failure_reason='startup_reconciliation' WHERE status='running'`) before the first tick. It is single-node: starting a second instance marks the first instance's in-flight rows failed.

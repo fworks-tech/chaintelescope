@@ -15,6 +15,7 @@
     "db:seed": "pnpm build && node dist/db/migrate-cli.js",
     "db:reset": "pnpm build && node dist/db/migrate-cli.js --down && node dist/db/migrate-cli.js",
     "test": "vitest run",
+    "test:integration": "vitest run -c vitest.integration.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
