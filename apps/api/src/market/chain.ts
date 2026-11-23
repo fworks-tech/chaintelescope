@@ -10,7 +10,10 @@ export interface MarketChainOptions {
   readonly timeoutMs: number;
 }
 
-function withTimeout(signal: AbortSignal, timeoutMs: number): {
+function withTimeout(
+  signal: AbortSignal,
+  timeoutMs: number,
+): {
   signal: AbortSignal;
   cleanup: () => void;
 } {
@@ -38,7 +41,10 @@ function withTimeout(signal: AbortSignal, timeoutMs: number): {
   };
 }
 
-function timeoutPromise(ms: number, signal: AbortSignal): {
+function timeoutPromise(
+  ms: number,
+  signal: AbortSignal,
+): {
   promise: Promise<never>;
   cleanup: () => void;
 } {
@@ -62,6 +68,69 @@ function timeoutPromise(ms: number, signal: AbortSignal): {
   };
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function assertValidSnapshot(
+  snapshot: Snapshot,
+  symbols: readonly string[],
+  window: TimeWindow,
+  providerId: MarketProvider["id"],
+): void {
+  if (snapshot.window !== window) {
+    throw new Error(
+      `provider ${providerId} returned window ${snapshot.window}`,
+    );
+  }
+  if (!Array.isArray(snapshot.series)) {
+    throw new Error(`provider ${providerId} returned invalid series`);
+  }
+  for (const symbol of symbols) {
+    const series = snapshot.series.find((s) => s.asset === symbol);
+    if (!series)
+      throw new Error(`provider ${providerId} missing series for ${symbol}`);
+    if (series.source !== providerId) {
+      throw new Error(
+        `provider ${providerId} returned source ${series.source} for ${symbol}`,
+      );
+    }
+    const { dates, prices, trend } = series;
+    if (
+      !Array.isArray(dates) ||
+      !Array.isArray(prices) ||
+      !Array.isArray(trend)
+    ) {
+      throw new Error(
+        `provider ${providerId} returned malformed arrays for ${symbol}`,
+      );
+    }
+    if (dates.length === 0 || prices.length === 0 || trend.length === 0) {
+      throw new Error(
+        `provider ${providerId} returned empty series for ${symbol}`,
+      );
+    }
+    if (dates.length !== prices.length || dates.length !== trend.length) {
+      throw new Error(
+        `provider ${providerId} returned misaligned series for ${symbol}`,
+      );
+    }
+    for (let i = 0; i < dates.length; i++) {
+      const date = dates[i];
+      if (typeof date !== "string" || Number.isNaN(Date.parse(date))) {
+        throw new Error(
+          `provider ${providerId} returned invalid date for ${symbol}`,
+        );
+      }
+      if (!isFiniteNumber(prices[i]) || !isFiniteNumber(trend[i])) {
+        throw new Error(
+          `provider ${providerId} returned non-finite value for ${symbol}`,
+        );
+      }
+    }
+  }
+}
+
 export const createMarketChain = (
   providers: readonly MarketProvider[],
   logger: ChainLogger,
@@ -80,6 +149,7 @@ export const createMarketChain = (
       void pending.catch(() => undefined);
       try {
         const snapshot = await Promise.race([pending, timeout.promise]);
+        assertValidSnapshot(snapshot, symbols, window, provider.id);
         return { ...snapshot, provider: provider.id };
       } catch (error) {
         if (signal.aborted) throw error;

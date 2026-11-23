@@ -479,7 +479,7 @@ describe.skipIf(!DATABASE_URL)("route status matrix", () => {
           }),
           invalidPayload: () => ({
             method: "GET",
-            url: "/api/price-trend?window=BAD",
+            url: "/api/price-trend?asset=../BTC",
           }),
         },
       },

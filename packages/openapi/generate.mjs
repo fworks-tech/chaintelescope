@@ -86,6 +86,15 @@ const RESPONSES = {
     409: "E-mail already subscribed",
     422: "Payload validation failed",
   },
+  "GET /api/price-trend": {
+    200: "Price trend series",
+    422: "Payload validation failed",
+    429: "Rate limited",
+    503: "Market providers unavailable",
+  },
+  "GET /api/snapshot": {
+    503: "Snapshot route blocked until #122",
+  },
 };
 
 const ERROR_SCHEMA = {

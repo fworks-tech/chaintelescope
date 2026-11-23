@@ -123,4 +123,23 @@ describe.skipIf(!DATABASE_URL)("rate limit routes", () => {
       expect((await healthServer.inject("/healthz")).statusCode).toBe(200);
     }
   });
+
+  test("public /api/price-trend is rate limited per IP", async () => {
+    for (let attempt = 1; attempt <= 30; attempt += 1) {
+      const res = await server.inject({
+        url: "/api/price-trend?source=mock&asset=BTC&window=30D&days=30",
+        remoteAddress: "203.0.113.10",
+      });
+      expect(res.statusCode).toBe(200);
+    }
+
+    const blocked = await server.inject({
+      url: "/api/price-trend?source=mock&asset=BTC&window=30D&days=30",
+      remoteAddress: "203.0.113.10",
+    });
+    expect(blocked.statusCode).toBe(429);
+    expect((blocked.result as { error: { code: string } }).error.code).toBe(
+      "rate_limited",
+    );
+  });
 });

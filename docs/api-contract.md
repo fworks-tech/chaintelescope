@@ -41,13 +41,18 @@ CI (`build` job) runs the generator after `pnpm -r build` and fails on `git diff
 | `POST /scans/{id}/cancel`    | 401       | 202  | —     | —               | 404              | 409      |
 | `DELETE /scans/{id}`         | 401       | 403  | 204   | —               | 404              | —        |
 | `POST /newsletter/subscribe` | 201       | 201  | —     | 422             | —                | 409      |
+| `GET /api/price-trend`       | 200       | 200  | —     | 422             | —                | —        |
+| `GET /api/snapshot`          | 503       | 503  | —     | —               | —                | —        |
 
 Every `429` from the token bucket (`#121`) is outside this matrix; it is covered by `test/rate-limit.integration.test.ts` with a frozen clock. Every error body follows `{ error: { code, message, requestId }, details? }` from `#118`.
 
 ## Not registered
 
 - `GET /api/news` — the ingest exists but has no scheduler (#109), and the Node schema lacks the Python response's `source`/`tags`.
-- `GET /api/snapshot` — blocked on the market-provider port.
 - `GET /api/newsletter/subscriptions` — the Python version lists every subscriber e-mail; not exposed.
+
+## Registered but blocked
+
+- `GET /api/snapshot` — registered, but returns `503 snapshot_not_ready` until non-market deps (news/alerts/kpi/risk) land in #122.
 
 These are marked blocked in `docs/port-inventory.md` rather than stubbed.

@@ -4,6 +4,7 @@
  */
 
 import Joi from "joi";
+import type { MarketProviderSelection } from "@chaintelescope/shared";
 
 /**
  * Contrato estrito das variáveis de ambiente exigidas pelo runtime da API.
@@ -35,7 +36,7 @@ export interface Environment {
   readonly SCAN_POLL_INTERVAL_MS: number;
   readonly SCAN_CONCURRENCY: number;
   readonly CORS_ORIGINS: string;
-  readonly MARKET_PROVIDER: "auto" | "binance" | "coingecko" | "coinbase" | "mock";
+  readonly MARKET_PROVIDER: MarketProviderSelection;
   readonly MARKET_REQUEST_TIMEOUT_SECONDS: number;
 }
 
