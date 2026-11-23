@@ -1,5 +1,5 @@
 /**
- * @fileoverview Interface `DB` escrita à mão espelhando `migrations/*.sql`.
+ * @fileoverview Interface `DB` escrita à mão espelhando `apps/api/migrations/*.sql`.
  * Se a migração mudar e este arquivo não, o typecheck quebra — é o ponto.
  * @module api/db/schema
  */

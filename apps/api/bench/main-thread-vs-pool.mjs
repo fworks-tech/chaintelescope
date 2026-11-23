@@ -1,5 +1,5 @@
 import { monitorEventLoopDelay } from 'node:perf_hooks';
-import { TaskPool } from '../apps/api/dist/workers/pool.js';
+import { TaskPool } from '../dist/workers/pool.js';
 
 async function runBenchmark() {
   console.log('=== Event Loop Lag Benchmark: Main Thread vs Worker Pool ===\n');

@@ -164,8 +164,8 @@ CI and local setup install the full [`requirements.txt`](../requirements.txt) fo
 | [`apps/web/`](../apps/web/) | React + Vite client (starter template) |
 | [`packages/shared/`](../packages/shared/) | TypeScript contracts shared by API and client |
 | [`packages/openapi/`](../packages/openapi/) | Generated OpenAPI spec (never hand-edit) |
-| [`bench/`](../bench/) | Benchmark scripts (worker threads vs main thread) → `apps/api/bench/` in PR 3 |
-| [`migrations/`](../migrations/) | Plain-SQL schema + runner → `apps/api/migrations/` in PR 3 |
+| [`apps/api/bench/`](../apps/api/bench/) | Benchmark scripts (worker threads vs main thread) |
+| [`apps/api/migrations/`](../apps/api/migrations/) | Plain-SQL schema + runner |
 | [`adr/0008-monorepo-target-architecture.md`](adr/0008-monorepo-target-architecture.md) | Multi-app target layout; Python freeze policy lives here |
 | [`requirements.txt`](../requirements.txt) | Python dependencies |
 | [`notebooks/`](../notebooks/) | Jupyter notebooks for EDA, strategies, and report generation |

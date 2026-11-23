@@ -5,7 +5,8 @@
   "type": "module",
   "files": [
     "dist",
-    "sql"
+    "sql",
+    "migrations"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
