@@ -161,7 +161,7 @@ CI and local setup install the full [`requirements.txt`](../apps/python/requirem
 | [`apps/python/pages/`](../apps/python/pages/) | Streamlit routed pages |
 | [`apps/python/src/`](../apps/python/src/) | Python: FastAPI API, data layer, validation, logging |
 | [`apps/api/`](../apps/api/) | Hapi.js + TypeScript API (auth, scans, newsletter, `GET /api/price-trend`) |
-| [`apps/web/`](../apps/web/) | React + Vite client (starter template) |
+| [`apps/web/`](../apps/web/) | React + Vite SPA shell (router + typed API client + `vercel.json`) |
 | [`packages/shared/`](../packages/shared/) | TypeScript contracts shared by API and client |
 | [`packages/openapi/`](../packages/openapi/) | Generated OpenAPI spec (never hand-edit) |
 | [`apps/api/bench/`](../apps/api/bench/) | Benchmark scripts (worker threads vs main thread) |
