@@ -1,5 +1,6 @@
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as actions from "aws-cdk-lib/aws-cloudwatch-actions";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as sns from "aws-cdk-lib/aws-sns";
 import { Duration, type Stack } from "aws-cdk-lib";
 import {
@@ -79,6 +80,23 @@ export function buildObservability(
         metricName: "FailedInvocations",
         dimensionsMap: { RuleName: jobs.newsRule.ruleName },
         period,
+        statistic: "Sum",
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+    }),
+    new cloudwatch.Alarm(stack, "NewsJobCrashed", {
+      // FailedInvocations only covers launch failures; the writer crashing
+      // (DB down, bad image, all feeds failed) surfaces as a Python
+      // traceback on stderr, which lands in the job log group.
+      metric: new logs.MetricFilter(stack, "NewsJobTracebacks", {
+        logGroup: jobs.logGroup,
+        metricNamespace: "ChainTelescope/Jobs",
+        metricName: "NewsJobTraceback",
+        filterPattern: logs.FilterPattern.literal("Traceback"),
+        metricValue: "1",
+      }).metric({
+        period: Duration.hours(1),
         statistic: "Sum",
       }),
       threshold: 1,

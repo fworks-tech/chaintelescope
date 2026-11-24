@@ -13,7 +13,9 @@ RDS instance. Never migrates schema — it only ``INSERT``\ s with
 import hashlib
 import json
 import os
+import sys
 
+from loguru import logger
 from src.data.news.ingestion import load_news_items
 from src.data.news.models import FeedItem
 
@@ -31,6 +33,10 @@ def canonical_payload(item: FeedItem) -> str:
     Mirrors ``packages/shared`` ``canonicalize`` (``JSON.stringify`` never
     escapes non-ASCII except U+2028/U+2029 — vanishingly rare in headlines,
     accepted gap documented in ADR-0010).
+
+    Cross-writer rule: ``published_at`` is always UTC ``+00:00`` ISO here;
+    any future writer must emit the same lexical form or `content_hash`
+    will never collide (vector test pins this side).
     """
     return json.dumps(
         {
@@ -48,28 +54,38 @@ def content_hash(canonical: str) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def build_dsn() -> str:
-    """Full ``DATABASE_URL`` wins; otherwise assemble from PG parts.
+def is_http_url(url: str) -> bool:
+    return url.startswith("http://") or url.startswith("https://")
 
-    Mirrors the Node ``DATABASE_URL``-or-parts boot rule (``env.ts``).
+
+def open_conn():
+    """Write connection. Full ``DATABASE_URL`` wins; otherwise PG parts as
+    keyword args (never interpolated into a string — conninfo injection),
+    with ``sslmode=require`` like the Node ``resolvePgSsl`` path.
     """
+    import psycopg
+
     full = os.getenv("DATABASE_URL", "").strip()
     if full:
-        return full
-    parts = {
-        "host": os.getenv("PGHOST", "localhost"),
-        "port": os.getenv("PGPORT", "5432"),
-        "dbname": os.getenv("PGDATABASE", "chaintelescope"),
-        "user": os.getenv("PGUSER", "postgres"),
-        "password": os.getenv("PGPASSWORD", ""),
-    }
-    return " ".join(f"{key}={value}" for key, value in parts.items())
+        return psycopg.connect(full)
+    return psycopg.connect(
+        host=os.getenv("PGHOST", "localhost"),
+        port=int(os.getenv("PGPORT", "5432")),
+        dbname=os.getenv("PGDATABASE", "chaintelescope"),
+        user=os.getenv("PGUSER", "postgres"),
+        password=os.getenv("PGPASSWORD", ""),
+        sslmode="require",
+    )
 
 
 def write_news_items(conn, items: list[FeedItem]) -> dict:
     """Insert items, counting created vs deduped rows. One feed failing
     upstream never reaches here — ``load_news_items`` already isolates
-    per-feed failures and falls back, so this stays a straight loop."""
+    per-feed failures and falls back, so this stays a straight loop.
+    A mid-loop DB error propagates and the transaction rolls back whole.
+    """
+    if not items:
+        return {"created": 0, "deduped": 0}
     created = 0
     deduped = 0
     with conn.cursor() as cur:
@@ -81,7 +97,7 @@ def write_news_items(conn, items: list[FeedItem]) -> dict:
                     item.title,
                     item.url,
                     item.source,
-                    item.tags,
+                    [tag.lower() for tag in item.tags],
                     item.published_at,
                     content_hash(canonical),
                     canonical,
@@ -100,19 +116,26 @@ def main() -> dict:
 
     No watchlist filter here — filtering happens at read time
     (``GET /api/news``), so one run serves every watchlist.
+    Mock fallback rows are never persisted: if every feed failed, raise so
+    the failure pages instead of polluting the table with ``example.com``.
+    Non-http(s) URLs are skipped (stored XSS otherwise, see web audit).
     """
-    import psycopg
-
-    items = load_news_items()
-    with psycopg.connect(build_dsn()) as conn:
+    fetched = load_news_items()
+    items = [item for item in fetched if item.source != "mock" and is_http_url(item.url)]
+    skipped = len(fetched) - len(items)
+    if skipped:
+        logger.warning("skipping {} non-persistable items", skipped)
+    if not items:
+        raise RuntimeError(
+            "all feeds failed; refusing to persist fallback rows",
+        )
+    with open_conn() as conn:
         result = write_news_items(conn, items)
     result["fetched"] = len(items)
     return result
 
 
 if __name__ == "__main__":
-    import sys
-
     outcome = main()
     print(json.dumps(outcome, sort_keys=True))
     sys.exit(0)

@@ -16,8 +16,8 @@ SNS-paged CloudWatch alarms. Synth-only in CI; deploys are manual.
 - `lib/jobs.ts` — scheduled Python news ingest: EventBridge hourly rule →
   run-to-complete Fargate task (0.25 vCPU / 0.5 GB), out-of-stack ECR repo
   `chaintelescope/news-job`, own log group + SG (RDS opens 5432 to it)
-- `lib/observability.ts` — 8 alarms (ALB 5xx, target 5xx, ECS CPU/mem, RDS
-  CPU/connections/free storage, news-job failed invocations) → one SNS topic
+- `lib/observability.ts` — 9 alarms (ALB 5xx, target 5xx, ECS CPU/mem, RDS
+  CPU/connections/free storage, news-job failed launch + writer crash) → one SNS topic
 - `test/stack.test.ts` — synth assertions (no credentials needed)
 
 ## Gates
@@ -56,6 +56,9 @@ pnpm --filter @chaintelescope/infra exec cdk synth --strict
    (Verify the schedule after deploy: `aws events list-rules
    --query 'Rules[?contains(Name,\`NewsJobSchedule\`)]'` and tail
    `/aws/ecs/news-job` in CloudWatch Logs after the hour.)
+   The rule has no retry/DLQ by design (hourly cadence, idempotent rerun):
+   redrive a failed run by hand with `aws ecs run-task` using the same task
+   definition and subnets (see step 6 for the network flags).
 4. `WEB_ORIGIN=https://<vercel-web-url> cdk deploy --strict` (diff first)
 5. Subscribe to alarms: `aws sns subscribe --topic-arn <Alarms ARN>
    --protocol email --notification-endpoint you@example.com`

@@ -12,6 +12,8 @@ import type { NetworkOutput } from "./network.js";
 export interface JobsOutput {
   /** Hourly RSS ingest rule; observability alarms on its failed invocations. */
   readonly newsRule: events.Rule;
+  /** Writer logs; observability counts Python tracebacks in it. */
+  readonly logGroup: logs.LogGroup;
 }
 
 /**
@@ -40,6 +42,9 @@ export function buildNewsJob(
   );
 
   const logGroup = new logs.LogGroup(stack, "NewsJobLogGroup", {
+    // Explicit name: the runbook tails this group, and the failure alarm
+    // filters it. A CFN-generated name would break both.
+    logGroupName: "/aws/ecs/news-job",
     retention: logs.RetentionDays.ONE_WEEK,
   });
 
@@ -100,5 +105,5 @@ export function buildNewsJob(
     }),
   );
 
-  return { newsRule };
+  return { newsRule, logGroup };
 }

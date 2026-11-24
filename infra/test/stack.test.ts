@@ -1,6 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
-import { describe, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { buildApi } from "../lib/api.js";
 import { buildData } from "../lib/data.js";
 import { buildNewsJob } from "../lib/jobs.js";
@@ -33,7 +33,7 @@ describe("chaintelescope stack", () => {
     template.resourceCountIs("AWS::ECS::Service", 1);
     template.resourceCountIs("AWS::RDS::DBInstance", 1);
     template.resourceCountIs("AWS::SNS::Topic", 1);
-    template.resourceCountIs("AWS::CloudWatch::Alarm", 8);
+    template.resourceCountIs("AWS::CloudWatch::Alarm", 9);
   });
 
   test("runs the news ingest hourly as a small run-to-complete task", () => {
@@ -41,10 +41,52 @@ describe("chaintelescope stack", () => {
     template.hasResourceProperties("AWS::Events::Rule", {
       ScheduleExpression: "cron(0 * * * ? *)",
     });
-    template.hasResourceProperties("AWS::ECS::TaskDefinition", {
-      Cpu: "256",
-      Memory: "512",
+
+    // Pin the writer task itself (not just any task definition): image,
+    // command, size, and the rule wired to it.
+    const tasks = template.findResources("AWS::ECS::TaskDefinition");
+    const writerId = Object.keys(tasks).find((id) => {
+      const containers =
+        tasks[id]?.Properties?.ContainerDefinitions ?? [];
+      return containers.some(
+        (container: { Name?: string }) => container.Name === "writer",
+      );
     });
+    expect(writerId).toBeDefined();
+    const writer = tasks[writerId ?? ""]?.Properties;
+    expect(writer?.Cpu).toBe("256");
+    expect(writer?.Memory).toBe("512");
+    expect(writer?.ContainerDefinitions?.[0]?.Image?.["Fn::Join"]).toBeDefined();
+    expect(writer?.ContainerDefinitions?.[0]?.Command).toEqual([
+      "python",
+      "-m",
+      "src.data.news.writer",
+    ]);
+    const env = Object.fromEntries(
+      (
+        writer?.ContainerDefinitions?.[0]?.Environment ?? []
+      ).map((entry: { Name?: string; Value?: string }) => [
+        entry.Name,
+        entry.Value,
+      ]),
+    );
+    expect(env["PGDATABASE"]).toBe("chaintelescope");
+
+    const rules = template.findResources("AWS::Events::Rule");
+    const ruleTargets = Object.values(rules)
+      .filter(
+        (rule) =>
+          rule?.Properties?.ScheduleExpression === "cron(0 * * * ? *)",
+      )
+      .flatMap((rule) => rule?.Properties?.Targets ?? []);
+    expect(
+      ruleTargets.some(
+        (target: { EcsParameters?: { TaskDefinitionArn?: unknown } }) =>
+          JSON.stringify(target.EcsParameters?.TaskDefinitionArn).includes(
+            writerId ?? "no-such-task",
+          ),
+      ),
+    ).toBe(true);
   });
 
   test("uses cheap dev-baseline data settings", () => {

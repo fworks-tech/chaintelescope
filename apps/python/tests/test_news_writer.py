@@ -6,9 +6,10 @@ from unittest.mock import MagicMock, patch
 
 from src.data.news.models import FeedItem
 from src.data.news.writer import (
-    build_dsn,
     canonical_payload,
     content_hash,
+    is_http_url,
+    open_conn,
     write_news_items,
 )
 
@@ -89,20 +90,36 @@ class WriteNewsItemsTests(unittest.TestCase):
                 "ETF flows rebound",
                 "https://example.com/etf-flows",
                 "https://www.coindesk.com/arc/outboundfeeds/rss/",
-                ["BTC", "ETF"],
+                ["btc", "etf"],
                 datetime(2026, 10, 26, 12, 0, 0, tzinfo=UTC),
             ),
         )
         payload = json.loads(params[6])
         self.assertEqual(payload["title"], "ETF flows rebound")
+        self.assertEqual(params[5], content_hash(params[6]))
+
+    def test_mid_loop_error_propagates_without_commit(self):
+        conn, cur = self._conn([{"id": "x"}])
+        cur.execute.side_effect = [None, RuntimeError("db gone")]
+        with self.assertRaises(RuntimeError):
+            write_news_items(conn, [_item(), _item(title="Other")])
+        conn.commit.assert_not_called()
 
 
-class BuildDsnTests(unittest.TestCase):
+class OpenConnTests(unittest.TestCase):
     def test_full_database_url_wins(self):
-        with patch.dict("os.environ", {"DATABASE_URL": "postgres://u:p@h:5432/db"}, clear=False):
-            self.assertEqual(build_dsn(), "postgres://u:p@h:5432/db")
+        with (
+            patch.dict(
+                "os.environ",
+                {"DATABASE_URL": "postgres://u:p@h:5432/db"},
+                clear=False,
+            ),
+            patch("psycopg.connect") as connect,
+        ):
+            open_conn()
+            connect.assert_called_once_with("postgres://u:p@h:5432/db")
 
-    def test_parts_assemble_like_node_boot_rule(self):
+    def test_parts_become_kwargs_with_required_tls(self):
         env = {
             "DATABASE_URL": "",
             "PGHOST": "db.local",
@@ -112,10 +129,22 @@ class BuildDsnTests(unittest.TestCase):
             "PGPASSWORD": "s3cret",
         }
         with patch.dict("os.environ", env, clear=False):
-            dsn = build_dsn()
-        for fragment in ("host=db.local", "port=5433", "dbname=ct", "user=writer"):
-            self.assertIn(fragment, dsn)
+            with patch("psycopg.connect") as connect:
+                open_conn()
+                connect.assert_called_once_with(
+                    host="db.local",
+                    port=5433,
+                    dbname="ct",
+                    user="writer",
+                    password="s3cret",
+                    sslmode="require",
+                )
 
 
-if __name__ == "__main__":
-    unittest.main()
+class IsHttpUrlTests(unittest.TestCase):
+    def test_allowlists_http_schemes_only(self):
+        self.assertTrue(is_http_url("https://example.com/x"))
+        self.assertTrue(is_http_url("http://example.com/x"))
+        self.assertFalse(is_http_url("javascript:alert(1)"))
+        self.assertFalse(is_http_url("data:text/html,<h1>x</h1>"))
+        self.assertFalse(is_http_url("notaurl"))
