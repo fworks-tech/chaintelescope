@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - CI runs the Node gates (`typecheck`, `lint`, `test`, `build`) alongside restored Python gates; `pnpm test` builds first because the Node tests import compiled output.
-- `apps/web` renamed to `@chaintelescope/web` so workspace filters resolve; `react-router-dom` and `recharts` removed until they are used.
+- `apps/web` renamed to `@chaintelescope/web` so workspace filters resolve; `recharts` renders the dashboard price-trend chart.
 - README, `AGENTS.md` and `docs/Architecture.md` now describe both stacks and their real state instead of the intended end state.
 
 ### Removed
