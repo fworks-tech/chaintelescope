@@ -142,6 +142,10 @@ def _normalize_dates(dates):
         except Exception as exc:
             raise ValueError(f"invalid market date: {value!r}") from exc
         if isinstance(parsed, datetime):
+            # pandas NaT passes isinstance(datetime) — reject it so both
+            # runtimes agree on invalid dates with or without pandas (#178).
+            if pd is not None and parsed is pd.NaT:
+                raise ValueError(f"invalid market date: {value!r}")
             normalized.append(parsed)
         else:
             raise ValueError(f"invalid market date: {value!r}")

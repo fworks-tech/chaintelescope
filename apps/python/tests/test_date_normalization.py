@@ -30,6 +30,12 @@ class DateNormalizationTests(unittest.TestCase):
             )
             self.assertEqual(source, "mock")
 
+    def test_nan_timestamp_rejected(self):
+        # pandas turns NaN into NaT, which claims isinstance(datetime);
+        # both runtimes must reject it (parity with the Node chain).
+        with self.assertRaises(ValueError):
+            market_service._normalize_dates([float("nan")])
+
     def test_valid_dates_pass_through(self):
         dates = market_service._normalize_dates(["2024-05-14T00:00:00.000Z", 1715644800000])
         self.assertEqual(len(dates), 2)
