@@ -86,6 +86,17 @@ describe("PG* database fallback (ECS pattern)", () => {
     );
   });
 
+  test("enables SSL for non-loopback hosts, off for localhost", async () => {
+    const { resolvePgSsl } = await import("../src/env-db.js");
+    expect(
+      resolvePgSsl("postgresql://ct:s@db.example.internal:5432/chaintelescope"),
+    ).toEqual({ rejectUnauthorized: false });
+    expect(
+      resolvePgSsl("postgresql://postgres:postgres@localhost:5432/chaintelescope_dev"),
+    ).toBeUndefined();
+    expect(resolvePgSsl("not a url")).toBeUndefined();
+  });
+
   test("loadEnv exposes the composed URL as DATABASE_URL", () => {
     const { PGHOST, PGUSER, PGPASSWORD, PGDATABASE } = parts;
     const env = loadEnv({

@@ -2,6 +2,7 @@ import type { Plugin, Server } from "@hapi/hapi";
 import { Kysely, PostgresDialect } from "kysely";
 import pg from "pg";
 import { env } from "../env.js";
+import { resolvePgSsl } from "../env-db.js";
 import type { DB } from "./schema.js";
 
 declare module "@hapi/hapi" {
@@ -16,6 +17,8 @@ export const dbPlugin: Plugin<Record<string, never>> = {
   register: async (server: Server) => {
     const pool = new pg.Pool({
       connectionString: env.DATABASE_URL,
+      // RDS enforces wire encryption; localhost dev does not need it.
+      ssl: resolvePgSsl(env.DATABASE_URL),
       max: 20,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,

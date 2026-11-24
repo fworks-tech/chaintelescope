@@ -3,7 +3,7 @@ import * as ecr from "aws-cdk-lib/aws-ecr";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
-import { RemovalPolicy, type Stack } from "aws-cdk-lib";
+import type { Stack } from "aws-cdk-lib";
 import { DB_NAME } from "./data.js";
 import type { DataOutput } from "./data.js";
 import type { NetworkOutput } from "./network.js";
@@ -19,8 +19,11 @@ export interface ApiOutput {
 
 /**
  * Fargate API behind an ALB (0.5 vCPU / 1 GB, 1 task). The image comes from
- * the in-stack ECR repo — build and push it by hand before the first deploy
- * (see infra/README.md); the stack never builds Docker at synth time.
+ * the OUT-OF-STACK ECR repo `chaintelescope/api` — pre-create it and push
+ * `:latest` by hand before the first deploy (see infra/README.md); an
+ * in-stack repo cannot work because the image must exist before the service
+ * starts, and the service is created in the same deploy. The stack never
+ * builds Docker at synth time.
  * DB access uses the PG* parts pattern (Secret values cannot be concatenated
  * at synth time; apps/api/src/env-db.ts composes them at boot).
  */
@@ -30,10 +33,14 @@ export function buildApi(
   data: DataOutput,
   props: ApiProps,
 ): ApiOutput {
-  const repo = new ecr.Repository(stack, "ApiRepo", {
-    removalPolicy: RemovalPolicy.DESTROY,
-    emptyOnDelete: true,
-  });
+  // Pre-created by hand (`aws ecr create-repository`, infra/README.md).
+  // Imported, not owned: tearing down the stack leaves the repo (and image)
+  // alone; delete it by hand if you ever want it gone.
+  const repo = ecr.Repository.fromRepositoryName(
+    stack,
+    "ApiRepo",
+    "chaintelescope/api",
+  );
 
   // Created by hand before the first deploy (infra/README.md).
   const appSecrets = secretsmanager.Secret.fromSecretNameV2(

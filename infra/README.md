@@ -33,18 +33,32 @@ pnpm --filter @chaintelescope/infra exec cdk synth --strict
 2. Create the app secrets (names must match `lib/api.ts`):
    `aws secretsmanager create-secret --name chaintelescope/app-secrets
    --secret-string '{"jwtAccessSecret":"<32+ chars>","argon2Pepper":"<64 hex>"}'`
-3. Build and push the image; the repo URI is printed by synth:
-   `docker build -f apps/api/Dockerfile -t <repo>:latest .`
-   `aws ecr get-login-password | docker login --username AWS --password-stdin <repo>`
-   `docker push <repo>:latest`
+   (strip `\r` from generated values — a stray carriage return breaks JSON
+   parsing at task startup; the ECS error reads `invalid character '\r'`)
+3. Pre-create the out-of-stack image repo once, then build and push; the URI
+   is deterministic (`ACCOUNT.dkr.ecr.REGION.amazonaws.com/chaintelescope/api`):
+   `aws ecr create-repository --repository-name chaintelescope/api`
+   `docker build -f apps/api/Dockerfile -t <uri>:latest .`
+   `aws ecr get-login-password --region <region> | docker login --username AWS --password-stdin <account>.dkr.ecr.<region>.amazonaws.com`
+   `docker push <uri>:latest`
+   (The repo lives outside the stack on purpose: the service needs `:latest`
+   to exist before its first deploy, which an in-stack repo cannot provide.
+   Builder note: the Dockerfile installs `python3/make/g++` for the argon2
+   native build — the slim base image has no toolchain.)
 4. `WEB_ORIGIN=https://<vercel-web-url> cdk deploy --strict` (diff first)
 5. Subscribe to alarms: `aws sns subscribe --topic-arn <Alarms ARN>
    --protocol email --notification-endpoint you@example.com`
-6. Migrations/seed against RDS from any shell with the PG\* parts or a full
-   `DATABASE_URL` (see `apps/api/.env.example`):
-   `DATABASE_URL=postgresql://... pnpm db:migrate`
-   ECS one-off tasks work too — the task already injects the same PG\* parts
-   that `apps/api/src/env-db.ts` composes at boot.
+6. Migrations run as ECS one-off tasks — RDS sits in isolated subnets, so no
+   shell reaches it directly (the old "any shell with PG* parts" line only
+   works locally). Same task definition, command override, public subnets +
+   the service SG so the task can reach RDS on 5432:
+   `aws ecs run-task --cluster <clusterArn> --task-definition <taskDefArn>
+   --launch-type FARGATE --network-configuration
+   "awsvpcConfiguration={subnets=[...],securityGroups=[<serviceSg>],assignPublicIp=ENABLED}"
+   --overrides '{"containerOverrides":[{"name":"web","command":["dist/db/migrate-cli.js"]}]}'`
+   The container inherits the PG\* env/secrets from the task definition
+   (`env-db.ts` composes `DATABASE_URL`; `resolvePgSsl` turns TLS on for
+   non-loopback hosts — RDS enforces it).
 
 ## Cost (~$40/mo us-east-1, dev baseline)
 
