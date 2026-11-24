@@ -33,6 +33,11 @@ export function escapeLike(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
+/** Normaliza tags para comparação exata: escritores gravam minúsculas. */
+export function normalizeTag(tag: string): string {
+  return tag.toLowerCase();
+}
+
 export class NewsRepo {
   constructor(private readonly db: Kysely<DB>) {}
 
@@ -73,17 +78,14 @@ export class NewsRepo {
       .limit(filter.limit);
 
     if (filter.assets.length > 0) {
+      // Tags são gravadas minúsculas (writer Python + ingest); o título
+      // casa via ILIKE. Uma variante basta — sem fan-out 4n por ativo.
       query = query.where((eb) =>
         eb.or(
-          filter.assets.flatMap((asset) => {
-            const pattern = `%${escapeLike(asset)}%`;
-            return [
-              eb("title", "ilike", pattern),
-              eb("tags", "@>", [asset]),
-              eb("tags", "@>", [asset.toUpperCase()]),
-              eb("tags", "@>", [asset.toLowerCase()]),
-            ];
-          }),
+          filter.assets.flatMap((asset) => [
+            eb("title", "ilike", `%${escapeLike(asset)}%`),
+            eb("tags", "@>", [normalizeTag(asset)]),
+          ]),
         ),
       );
     }

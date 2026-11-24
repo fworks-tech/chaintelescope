@@ -12,6 +12,27 @@ import {
 } from "@chaintelescope/shared";
 import type { Plugin } from "@hapi/hapi";
 import { NewsRepo } from "../db/repos/news.js";
+import type { NewsRow } from "../db/schema.js";
+
+/**
+ * Mapeia a linha do Postgres para o contrato público. Extraída para ser
+ * testada sem banco (a rota em si só é coberta pela matrix de integração).
+ */
+export function toNewsItem(
+  row: Pick<
+    NewsRow,
+    "id" | "source" | "tags" | "title" | "url" | "published_at"
+  >,
+): NewsItem {
+  return {
+    id: row.id,
+    source: row.source,
+    publishedAt: row.published_at.toISOString(),
+    title: row.title,
+    url: row.url,
+    tags: [...row.tags],
+  };
+}
 
 /**
  * Split a comma-separated watchlist, dropping blanks and duplicates.
@@ -46,14 +67,7 @@ export const newsPlugin: Plugin<void> = {
           assets: parseWatchlist(query.watchlist),
           limit: query.limit,
         });
-        return rows.map((row) => ({
-          id: row.id,
-          source: row.source,
-          publishedAt: row.published_at.toISOString(),
-          title: row.title,
-          url: row.url,
-          tags: [...row.tags],
-        }));
+        return rows.map(toNewsItem);
       },
     });
   },

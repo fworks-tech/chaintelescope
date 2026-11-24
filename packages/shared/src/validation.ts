@@ -91,6 +91,7 @@ export interface ListNewsQuery {
 }
 
 export const ListNewsQuerySchema = Joi.object<ListNewsQuery, true>({
-  watchlist: Joi.string().trim().max(200).default("BTC"),
+  // Empty string means no filter (same as omitting); the route maps both to [].
+  watchlist: Joi.string().trim().max(200).allow("").default("BTC"),
   limit: Joi.number().integer().min(1).max(100).default(10),
 }).meta({ className: "ListNewsQuery" });
