@@ -14,7 +14,9 @@ pnpm --filter @chaintelescope/web dev
 
 `/api` is proxied to `http://localhost:3000` in dev (see `vite.config.ts`); set
 `VITE_API_BASE_URL` to point at another origin. Same-origin `/api` is the
-production default, so the Vercel rewrite needs no config.
+default; in prod the Vercel rewrite sends `/api/*` to the API origin
+(`vercel.json`) — so dev, default and prod can hit three different backends.
+When verifying, confirm which backend served the response.
 
 ## Structure
 
@@ -44,5 +46,6 @@ production default, so the Vercel rewrite needs no config.
 ```bash
 pnpm --filter @chaintelescope/web typecheck
 pnpm --filter @chaintelescope/web lint
+pnpm --filter @chaintelescope/web test
 pnpm --filter @chaintelescope/web build
 ```

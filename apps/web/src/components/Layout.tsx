@@ -23,7 +23,6 @@ export default function Layout(): JSX.Element {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
       <AppBar
-        position="sticky"
         sx={{
           /* Sticky on desktop only: on a phone it would eat a sixth of the
              viewport, and the nav is one tap away anyway. */

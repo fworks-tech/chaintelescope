@@ -1,8 +1,19 @@
 import type { PriceTrend, TimeWindow } from "@chaintelescope/shared";
+import { TIME_WINDOW_DAYS } from "@chaintelescope/shared";
 
-/** Base URL for the Hapi API. Relative `/api` by default so same-origin deploys work with no config. */
+/**
+ * Base URL for the API. Dev proxies `/api` to localhost:3000 (vite.config.ts);
+ * same-origin `/api` is the default; prod Vercel rewrites `/api/*` to the API
+ * origin (vercel.json). Point `VITE_API_BASE_URL` elsewhere to override.
+ */
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "/api";
+
+/**
+ * Hangs are the common failure behind a loading spinner; the market chain
+ * already guards slow providers server-side, the UI gets the same treatment.
+ */
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -14,18 +25,27 @@ export class ApiError extends Error {
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`);
+  const res = await fetch(`${BASE_URL}${path}`, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
   if (!res.ok) {
     throw new ApiError(res.status, `${res.status} ${res.statusText}`);
   }
   return (await res.json()) as T;
 }
 
-/** Live price trend for one asset. Mirrors Python `GET /api/price-trend`. */
+/**
+ * Live price trend for one asset. Mirrors Python `GET /api/price-trend`.
+ * `days` is derived from the shared window map — never stated twice.
+ */
 export function getPriceTrend(
   asset = "BTC",
   window: TimeWindow = "30D",
 ): Promise<PriceTrend> {
-  const params = new URLSearchParams({ asset, window, days: "30" });
+  const params = new URLSearchParams({
+    asset,
+    window,
+    days: String(TIME_WINDOW_DAYS[window]),
+  });
   return getJson<PriceTrend>(`/price-trend?${params.toString()}`);
 }

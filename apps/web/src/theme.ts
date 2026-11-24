@@ -5,7 +5,7 @@ import { createTheme } from "@mui/material/styles";
  * `apps/python/src/styles.py` (`GLOBAL_STYLE` `:root` block).
  * Single light theme — dark mode is out of scope (see #135).
  *
- * Two deliberate deviations from the Streamlit CSS, both accessibility-driven:
+ * Three deliberate deviations from the Streamlit CSS, both accessibility-driven:
  * 1. `success`/`error` keep their bright hues for charts and fills, but text
  *    that carries meaning uses the `dark` shade (`#067647` / `#b42318`), since
  *    `#12b76a` on white is 2.4:1 and fails WCAG AA for body-size text.
@@ -184,3 +184,13 @@ export const theme = createTheme({
     MuiLink: { defaultProps: { underline: "hover" } },
   },
 });
+
+/**
+ * Chart colors: same Streamlit `chart_theme.py` source as the palette, kept
+ * here (not inline in the chart) so the AA deviations have a single home.
+ */
+export const chartTokens = {
+  grid: "#e2e8f0",
+  tick: "#566275",
+  trend: "#94a3ff",
+} as const;
