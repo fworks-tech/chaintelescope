@@ -74,3 +74,23 @@ export const NewsletterSubscriptionSchema = Joi.object<
     .default("Weekly"),
   format: Joi.string().valid("Summary", "Deep Dive").default("Summary"),
 }).meta({ className: "NewsletterSubscriptionPayload" });
+
+export interface NewsItem {
+  readonly id: string;
+  readonly source: string;
+  readonly publishedAt: string;
+  readonly title: string;
+  readonly url: string;
+  readonly tags: readonly string[];
+}
+
+export interface ListNewsQuery {
+  /** Comma-separated watchlist, e.g. "BTC,ETH". Empty means everything. */
+  readonly watchlist?: string;
+  readonly limit: number;
+}
+
+export const ListNewsQuerySchema = Joi.object<ListNewsQuery, true>({
+  watchlist: Joi.string().trim().max(200).default("BTC"),
+  limit: Joi.number().integer().min(1).max(100).default(10),
+}).meta({ className: "ListNewsQuery" });

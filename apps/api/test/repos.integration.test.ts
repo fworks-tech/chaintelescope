@@ -81,6 +81,59 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
     expect(second).toEqual({ deduped: true });
   });
 
+  test("news list filters by watchlist, orders by recency, honors limit", async () => {
+    await ingestNewsItem(
+      {
+        title: "ETF flows rebound",
+        url: "https://example.com/etf",
+        source: "https://www.coindesk.com/rss",
+        tags: ["BTC"],
+        publishedAt: "2026-10-26T12:00:00.000Z",
+      },
+      news,
+    );
+    await ingestNewsItem(
+      {
+        title: "Layer-1 activity rotates",
+        url: "https://example.com/l1",
+        source: "https://cointelegraph.com/rss",
+        tags: ["SOL"],
+        publishedAt: "2026-10-27T12:00:00.000Z",
+      },
+      news,
+    );
+    await ingestNewsItem(
+      {
+        title: "Local weather",
+        url: "https://example.com/weather",
+        source: "https://example.com/rss",
+        tags: [],
+        publishedAt: "2026-10-28T12:00:00.000Z",
+      },
+      news,
+    );
+
+    const all = await news.list({ assets: [], limit: 10 });
+    expect(all.map((row) => row.title)).toEqual([
+      "Local weather",
+      "Layer-1 activity rotates",
+      "ETF flows rebound",
+    ]);
+
+    expect(
+      await news.list({ assets: ["BTC"], limit: 10 }),
+    ).toHaveLength(1);
+    expect(
+      (await news.list({ assets: ["sol"], limit: 10 }))[0]?.title,
+    ).toBe("Layer-1 activity rotates");
+    expect(
+      await news.list({ assets: ["MISSING"], limit: 10 }),
+    ).toHaveLength(0);
+    expect(
+      await news.list({ assets: [], limit: 2 }),
+    ).toHaveLength(2);
+  });
+
   test("claimBatch hands each pending scan to exactly one caller", async () => {
     await scans.create({ kind: "feed" });
     await scans.create({ kind: "upload" });
