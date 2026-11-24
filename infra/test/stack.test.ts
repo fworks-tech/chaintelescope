@@ -3,6 +3,7 @@ import { Template } from "aws-cdk-lib/assertions";
 import { describe, test } from "vitest";
 import { buildApi } from "../lib/api.js";
 import { buildData } from "../lib/data.js";
+import { buildNewsJob } from "../lib/jobs.js";
 import { buildNetwork } from "../lib/network.js";
 import { buildObservability } from "../lib/observability.js";
 
@@ -16,7 +17,8 @@ function synth() {
   const api = buildApi(stack, network, data, {
     webOrigin: "https://app.example.com",
   });
-  buildObservability(stack, api, data);
+  const jobs = buildNewsJob(stack, network, data, api.cluster);
+  buildObservability(stack, api, data, jobs);
   return Template.fromStack(stack);
 }
 
@@ -31,7 +33,18 @@ describe("chaintelescope stack", () => {
     template.resourceCountIs("AWS::ECS::Service", 1);
     template.resourceCountIs("AWS::RDS::DBInstance", 1);
     template.resourceCountIs("AWS::SNS::Topic", 1);
-    template.resourceCountIs("AWS::CloudWatch::Alarm", 7);
+    template.resourceCountIs("AWS::CloudWatch::Alarm", 8);
+  });
+
+  test("runs the news ingest hourly as a small run-to-complete task", () => {
+    const template = synth();
+    template.hasResourceProperties("AWS::Events::Rule", {
+      ScheduleExpression: "cron(0 * * * ? *)",
+    });
+    template.hasResourceProperties("AWS::ECS::TaskDefinition", {
+      Cpu: "256",
+      Memory: "512",
+    });
   });
 
   test("uses cheap dev-baseline data settings", () => {

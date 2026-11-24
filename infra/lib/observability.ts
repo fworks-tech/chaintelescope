@@ -8,6 +8,7 @@ import {
 } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import type { ApiOutput } from "./api.js";
 import type { DataOutput } from "./data.js";
+import type { JobsOutput } from "./jobs.js";
 
 /**
  * One SNS topic; every alarm pages it. Subscribe an operator e-mail after
@@ -18,6 +19,7 @@ export function buildObservability(
   stack: Stack,
   api: ApiOutput,
   data: DataOutput,
+  jobs: JobsOutput,
 ): void {
   const topic = new sns.Topic(stack, "Alarms", {
     displayName: "chaintelescope-alarms",
@@ -68,6 +70,19 @@ export function buildObservability(
       evaluationPeriods: 1,
       comparisonOperator:
         cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+    }),
+    new cloudwatch.Alarm(stack, "NewsJobFailed", {
+      // No L2 metric helper on events.Rule here: FailedInvocations lives in
+      // the AWS/Events namespace, dimensioned by rule name.
+      metric: new cloudwatch.Metric({
+        namespace: "AWS/Events",
+        metricName: "FailedInvocations",
+        dimensionsMap: { RuleName: jobs.newsRule.ruleName },
+        period,
+        statistic: "Sum",
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
     }),
   ];
 

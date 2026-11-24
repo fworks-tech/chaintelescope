@@ -15,6 +15,8 @@ export interface ApiProps {
 
 export interface ApiOutput {
   readonly service: ecsPatterns.ApplicationLoadBalancedFargateService;
+  /** Shared with the scheduled jobs (EventBridge targets run in it). */
+  readonly cluster: ecs.Cluster;
 }
 
 /**
@@ -116,5 +118,5 @@ export function buildApi(
     "Fargate API to Postgres",
   );
 
-  return { service };
+  return { service, cluster };
 }
