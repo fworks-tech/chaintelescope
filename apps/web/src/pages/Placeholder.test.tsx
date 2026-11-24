@@ -17,7 +17,7 @@ describe("Placeholder", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Back to the dashboard" }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("href", "/");
   });
 });
 
@@ -31,6 +31,6 @@ describe("NotFound", () => {
     expect(screen.getByText("404")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Back to the dashboard" }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("href", "/");
   });
 });

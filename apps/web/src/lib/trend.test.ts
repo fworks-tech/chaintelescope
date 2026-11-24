@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   dailyVolatility,
   longDate,
@@ -8,6 +8,17 @@ import {
   windowDays,
   type TrendPoint,
 } from "./trend.ts";
+
+// Pin a non-UTC zone so "independent of runner timezone" is proven, not
+// claimed: without timeZone: "UTC" in the impl, Oct 26 00:00Z renders Oct 25
+// under New York time.
+beforeEach(() => {
+  vi.stubEnv("TZ", "America/New_York");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 function points(prices: readonly number[]): TrendPoint[] {
   return prices.map((price, i) => ({
@@ -33,7 +44,7 @@ describe("toPoints", () => {
     ]);
   });
 
-  it("falls back when dates or trend are short", () => {
+  it("clamps to the shortest array instead of masking gaps", () => {
     expect(
       toPoints({
         asset: "BTC",
@@ -42,10 +53,16 @@ describe("toPoints", () => {
         trend: [101],
         source: "mock",
       }),
-    ).toEqual([
-      { date: "", price: 100, trend: 101 },
-      { date: "", price: 110, trend: 110 },
-    ]);
+    ).toEqual([]);
+    expect(
+      toPoints({
+        asset: "BTC",
+        dates: ["2026-10-26T00:00:00"],
+        prices: [100, 110],
+        trend: [101, 109],
+        source: "mock",
+      }),
+    ).toEqual([{ date: "2026-10-26", price: 100, trend: 101 }]);
   });
 });
 
@@ -93,6 +110,7 @@ describe("summarizeTrend", () => {
     expect(summary.lowDate).toBe("2026-10-03");
     expect(summary.lastDate).toBe("2026-10-04");
     expect(summary.average).toBeCloseTo(105);
+    expect(summary.volatility).toBeCloseTo(dailyVolatility(prices));
     expect(summary.rangePct).toBeCloseTo(33.33, 1);
   });
 
@@ -103,6 +121,15 @@ describe("summarizeTrend", () => {
     expect(summary.change).toBeCloseTo(-20);
     expect(summary.high).toBe(100);
     expect(summary.highDate).toBe("2026-10-01");
+  });
+
+  it("skips zero gaps everywhere, panels never disagree", () => {
+    const prices = [100, 0, 110];
+    const summary = summarizeTrend(prices, points(prices));
+    expect(summary.count).toBe(2);
+    expect(summary.average).toBeCloseTo(105);
+    expect(summary.volatility).toBeCloseTo(dailyVolatility(prices));
+    expect(summary.low).toBe(100);
   });
 
   it("returns zeros and empty dates for empty input — never NaN", () => {

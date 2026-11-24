@@ -1,16 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "./Dashboard.tsx";
 import { ApiError } from "../api/client.js";
 
-vi.mock("../api/client.js", () => ({
-  ApiError: class ApiError extends Error {
-    readonly status: number;
-    constructor(status: number, message: string) {
-      super(message);
-      this.status = status;
-    }
-  },
+vi.mock("../api/client.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../api/client.js")>()),
   getPriceTrend: vi.fn(),
 }));
 
@@ -27,19 +21,31 @@ const series = {
   source: "mock" as const,
 };
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
 describe("Dashboard states", () => {
   it("shows skeleton tiles while fetching", async () => {
     const getPriceTrend = await loadMock();
     getPriceTrend.mockReturnValueOnce(new Promise(() => {}));
-    render(<Dashboard />);
+    const { container, unmount } = render(<Dashboard />);
     expect(
       screen.getByText("Loading the latest price trend…"),
     ).toBeInTheDocument();
+    expect(
+      container.querySelector(".MuiSkeleton-root"),
+    ).toBeInTheDocument();
+    unmount();
   });
 
   it("pins the 502 branch and recovers through Try again", async () => {
     const getPriceTrend = await loadMock();
-    getPriceTrend.mockRejectedValueOnce(new ApiError(502, "502 Bad Gateway"));
+    getPriceTrend.mockRejectedValueOnce(new ApiError(502, "Bad Gateway"));
     getPriceTrend.mockResolvedValueOnce(series);
     render(<Dashboard />);
     await waitFor(() =>
@@ -47,6 +53,7 @@ describe("Dashboard states", () => {
         "Price trend unavailable",
       ),
     );
+    expect(screen.getByRole("alert")).toHaveTextContent("API error 502");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() =>
       expect(screen.getByText("110.00")).toBeInTheDocument(),
@@ -61,6 +68,19 @@ describe("Dashboard states", () => {
     render(<Dashboard />);
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("API unreachable"),
+    );
+  });
+
+  it("shows a distinct message on client timeout", async () => {
+    const getPriceTrend = await loadMock();
+    getPriceTrend.mockRejectedValueOnce(
+      new DOMException("The operation timed out", "TimeoutError"),
+    );
+    render(<Dashboard />);
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Request timed out",
+      ),
     );
   });
 });

@@ -16,7 +16,9 @@ pnpm --filter @chaintelescope/web dev
 `VITE_API_BASE_URL` to point at another origin. Same-origin `/api` is the
 default; in prod the Vercel rewrite sends `/api/*` to the API origin
 (`vercel.json`) — so dev, default and prod can hit three different backends.
-When verifying, confirm which backend served the response.
+When verifying, confirm which backend served the response. Note: every Vercel
+preview rewrites to the same prod API — fine for reads, think twice once a
+preview can write (newsletter subscribe is public).
 
 ## Structure
 

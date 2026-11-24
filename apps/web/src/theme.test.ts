@@ -1,4 +1,3 @@
-import { createTheme } from "@mui/material/styles";
 import { describe, expect, it } from "vitest";
 import { chartTokens, theme } from "./theme.ts";
 
@@ -22,10 +21,9 @@ describe("theme tokens", () => {
     });
   });
 
-  it("merges with createTheme defaults without dropping tokens", () => {
-    const rebuilt = createTheme({
-      palette: { primary: { main: theme.palette.primary.main } },
-    });
-    expect(rebuilt.palette.primary.main).toBe("#3b5bff");
+  it("keeps light mode, shape and component defaults on the real theme", () => {
+    expect(theme.palette.mode).toBe("light");
+    expect(theme.shape.borderRadius).toBe(14);
+    expect(theme.components?.MuiLink?.defaultProps?.underline).toBe("hover");
   });
 });

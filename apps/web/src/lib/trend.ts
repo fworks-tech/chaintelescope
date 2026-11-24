@@ -20,11 +20,19 @@ const longDateFormat = new Intl.DateTimeFormat("en-US", {
 });
 
 export function toPoints(data: PriceTrend): TrendPoint[] {
-  return data.prices.map((price, i) => ({
-    date: (data.dates[i] ?? "").slice(0, 10),
-    price,
-    trend: data.trend[i] ?? price,
-  }));
+  // Clamp to the shortest array: silently echoing price-as-trend or "" dates
+  // renders a plausible-but-wrong chart, worse than fewer points.
+  const len = Math.min(data.prices.length, data.dates.length, data.trend.length);
+  const points: TrendPoint[] = [];
+  for (let i = 0; i < len; i += 1) {
+    const price = data.prices[i] ?? 0;
+    points.push({
+      date: (data.dates[i] ?? "").slice(0, 10),
+      price,
+      trend: data.trend[i] ?? price,
+    });
+  }
+  return points;
 }
 
 /** "2026-10-26" → "Oct 26"; anything unparseable passes through untouched. */
@@ -41,12 +49,18 @@ export function longDate(value: string): string {
   return Number.isNaN(parsed.getTime()) ? "" : longDateFormat.format(parsed);
 }
 
+/** One rule for both panels: non-positive prices are gaps, never observations. */
+function isObservation(price: number): boolean {
+  return price > 0;
+}
+
 /** Standard deviation of daily percentage returns, in percent. */
 export function dailyVolatility(prices: readonly number[]): number {
+  const valid = prices.filter(isObservation);
   const returns: number[] = [];
-  for (let i = 1; i < prices.length; i += 1) {
-    const prev = prices[i - 1] ?? 0;
-    const next = prices[i] ?? 0;
+  for (let i = 1; i < valid.length; i += 1) {
+    const prev = valid[i - 1] ?? 0;
+    const next = valid[i] ?? 0;
     if (prev && next) returns.push((next - prev) / prev);
   }
   if (returns.length < 2) return 0;
@@ -80,25 +94,31 @@ export function summarizeTrend(
   prices: readonly number[],
   points: readonly TrendPoint[],
 ): TrendSummary {
-  const count = prices.length;
-  const first = prices[0] ?? 0;
-  const last = prices[count - 1] ?? 0;
+  // Same gap rule as dailyVolatility: skip non-positive prices everywhere so
+  // the average and the volatility panel never disagree about a gap day.
+  const valid: { readonly price: number; readonly idx: number }[] = [];
+  for (let i = 0; i < prices.length; i += 1) {
+    const price = prices[i] ?? 0;
+    if (isObservation(price)) valid.push({ price, idx: i });
+  }
+  const count = valid.length;
+  const first = valid[0]?.price ?? 0;
+  const last = valid[count - 1]?.price ?? 0;
   const change = first === 0 ? 0 : ((last - first) / first) * 100;
   let high = 0;
   let low = 0;
   let highIdx = -1;
   let lowIdx = -1;
   let sum = 0;
-  for (let i = 0; i < count; i += 1) {
-    const price = prices[i] ?? 0;
+  for (const { price, idx } of valid) {
     sum += price;
     if (highIdx === -1 || price > high) {
       high = price;
-      highIdx = i;
+      highIdx = idx;
     }
     if (lowIdx === -1 || price < low) {
       low = price;
-      lowIdx = i;
+      lowIdx = idx;
     }
   }
   return {
@@ -110,7 +130,7 @@ export function summarizeTrend(
     low,
     highDate: points[highIdx]?.date ?? "",
     lowDate: points[lowIdx]?.date ?? "",
-    lastDate: points[count - 1]?.date ?? "",
+    lastDate: points[valid[count - 1]?.idx ?? -1]?.date ?? "",
     average: count > 0 ? sum / count : 0,
     volatility: dailyVolatility(prices),
     rangePct: low === 0 ? 0 : ((high - low) / low) * 100,

@@ -24,28 +24,36 @@ export class ApiError extends Error {
   }
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  const res = await fetch(`${BASE_URL}${path}`, { signal: combined });
   if (!res.ok) {
-    throw new ApiError(res.status, `${res.status} ${res.statusText}`);
+    throw new ApiError(res.status, res.statusText);
   }
   return (await res.json()) as T;
+}
+
+/** True for the 15s client timeout — surfaced distinctly from offline. */
+export function isTimeout(err: unknown): boolean {
+  return err instanceof DOMException && err.name === "TimeoutError";
 }
 
 /**
  * Live price trend for one asset. Mirrors Python `GET /api/price-trend`.
  * `days` is derived from the shared window map — never stated twice.
+ * Pass an AbortSignal to cancel on unmount; otherwise the request outlives
+ * the component (StrictMode remounts double-fire it).
  */
 export function getPriceTrend(
   asset = "BTC",
   window: TimeWindow = "30D",
+  signal?: AbortSignal,
 ): Promise<PriceTrend> {
   const params = new URLSearchParams({
     asset,
     window,
     days: String(TIME_WINDOW_DAYS[window]),
   });
-  return getJson<PriceTrend>(`/price-trend?${params.toString()}`);
+  return getJson<PriceTrend>(`/price-trend?${params.toString()}`, signal);
 }

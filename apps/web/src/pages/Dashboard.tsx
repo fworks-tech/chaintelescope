@@ -9,7 +9,8 @@ import {
   Skeleton,
 } from "@mui/material";
 import type { PriceTrend, TimeWindow } from "@chaintelescope/shared";
-import { ApiError, getPriceTrend } from "../api/client.js";
+import { ApiError, getPriceTrend, isTimeout } from "../api/client.js";
+import { priceFormat } from "../lib/format.ts";
 import {
   longDate,
   shortDate,
@@ -22,11 +23,6 @@ import StatTile from "../components/StatTile.tsx";
 import WindowSummary from "../components/WindowSummary.tsx";
 
 const TrendChart = lazy(() => import("../components/TrendChart.tsx"));
-
-const priceFormat = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 /** Single source for every "30-day" string on this screen. */
 const WINDOW: TimeWindow = "30D";
@@ -42,23 +38,29 @@ export default function Dashboard(): JSX.Element {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
     let cancelled = false;
-    getPriceTrend("BTC", WINDOW)
+    getPriceTrend("BTC", WINDOW, controller.signal)
       .then((data) => {
         if (!cancelled) setState({ status: "ready", data });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setState({
-          status: "error",
-          message:
-            err instanceof ApiError
-              ? `API ${err.status}: ${err.message}`
-              : "API unreachable",
-        });
+        // No status duplication: ApiError.message is the status text only.
+        if (err instanceof ApiError) {
+          setState({
+            status: "error",
+            message: `API error ${err.status} (${err.message})`,
+          });
+        } else if (isTimeout(err)) {
+          setState({ status: "error", message: "Request timed out" });
+        } else {
+          setState({ status: "error", message: "API unreachable" });
+        }
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [attempt]);
 

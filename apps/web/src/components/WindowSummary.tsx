@@ -1,12 +1,8 @@
 import type { JSX } from "react";
 import { Box, Card, CardContent, Stack, Typography } from "@mui/material";
 import { numericFont } from "../theme.ts";
+import { priceFormat } from "../lib/format.ts";
 import type { TrendSummary } from "../lib/trend.ts";
-
-const priceFormat = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 /** Derived-numbers panel; same observations the chart renders, no new fetch. */
 export default function WindowSummary({
@@ -35,7 +31,7 @@ export default function WindowSummary({
             mb: 0,
             flex: 1,
             justifyContent: "space-between",
-            "& div": {
+            "& > div": {
               display: "flex",
               justifyContent: "space-between",
               gap: 2,
