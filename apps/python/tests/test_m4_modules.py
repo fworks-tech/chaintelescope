@@ -98,16 +98,21 @@ class MarketConfigTests(unittest.TestCase):
 
 
 class NormalizeDatesTests(unittest.TestCase):
-    def test_normalize_dates_handles_unparseable_values(self):
+    def test_normalize_dates_rejects_unparseable_values(self):
         from src.data.market.service import _normalize_dates
 
         now = datetime.now()
-        result = _normalize_dates([now, "not-a-date", None, 1715683200000])
-        self.assertEqual(len(result), 4)
-        self.assertIsInstance(result[0], datetime)
-        self.assertIsInstance(result[1], datetime)
-        self.assertIsInstance(result[2], datetime)
-        self.assertIsInstance(result[3], datetime)
+        with self.assertRaises(ValueError):
+            _normalize_dates([now, "not-a-date", None, 1715683200000])
+
+    def test_normalize_dates_passes_valid_values(self):
+        from src.data.market.service import _normalize_dates
+
+        now = datetime.now()
+        result = _normalize_dates([now, "2024-05-14T00:00:00", 1715683200000])
+        self.assertEqual(len(result), 3)
+        for value in result:
+            self.assertIsInstance(value, datetime)
 
 
 if __name__ == "__main__":

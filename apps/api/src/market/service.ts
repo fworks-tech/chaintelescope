@@ -63,9 +63,8 @@ function mockTrend(
 
 export async function fetchPriceTrend(
   asset: string,
-  // shortcut: days is accepted for Python /api/price-trend parity but the
-  // Node chain sizes series by timeWindow; align days/window semantics later.
-  days: number,
+  /** Legacy query compat: sizing is by timeWindow; days is ignored when the window is known. */
+  _days: number,
   timeWindow: TimeWindow,
   marketSource: MarketProviderSelection,
   providers: readonly MarketProvider[],

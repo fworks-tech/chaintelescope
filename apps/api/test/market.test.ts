@@ -1,12 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import type {
   MarketProviderId,
   Snapshot,
   TimeWindow,
 } from "@chaintelescope/shared";
 import {
+  clearMarketCache,
   createMarketChain,
   fetchPriceTrend,
+  getMarketMetrics,
+  resetMarketMetrics,
   resolveMarketProviders,
 } from "../src/market/index.js";
 import type { MarketProvider } from "../src/market/provider.js";
@@ -42,6 +45,13 @@ function provider(
 }
 
 const logger = { warn: vi.fn() };
+
+// The chain cache/metrics are module-level: every test starts isolated,
+// and matrix loops clear again per iteration (same provider ids, new fakes).
+beforeEach(() => {
+  clearMarketCache();
+  resetMarketMetrics();
+});
 
 describe("market chain (#138)", () => {
   it("returns first success and records provider metadata", async () => {
@@ -117,6 +127,7 @@ describe("market chain (#138)", () => {
     ];
 
     for (const c of cases) {
+      clearMarketCache();
       const chain = createMarketChain(
         c.providers,
         { warn: vi.fn() },
@@ -360,6 +371,7 @@ describe("fetchPriceTrend service parity (#138)", () => {
     ];
 
     for (const c of cases) {
+      clearMarketCache();
       const result = await fetchPriceTrend(
         "BTC",
         30,
@@ -454,6 +466,32 @@ describe("fetchPriceTrend service parity (#138)", () => {
     expect(result.trend.every(Number.isFinite)).toBe(true);
   });
 
+  it("window sizes the series; days is legacy query compat", async () => {
+    const clock = new Date("2026-01-30T12:00:00.000Z");
+    const seven = await fetchPriceTrend(
+      "BTC",
+      999,
+      "7D",
+      "mock",
+      [],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { now: () => clock },
+    );
+    expect(seven.prices).toHaveLength(7);
+    const thirty = await fetchPriceTrend(
+      "BTC",
+      1,
+      "30D",
+      "mock",
+      [],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { now: () => clock },
+    );
+    expect(thirty.prices).toHaveLength(30);
+  });
+
   it("falls through when provider returns series for a different asset", async () => {
     const wrongAsset = provider("binance", async () => ({
       series: [
@@ -508,6 +546,52 @@ describe("fetchPriceTrend service parity (#138)", () => {
     );
     expect(result.source).toBe("mock");
     expect(result.dates).not.toContain("not-a-date");
+  });
+});
+
+describe("market chain partial failure (#177)", () => {
+  it("one bad asset fails the whole provider snapshot and falls through", async () => {
+    const partial = provider("binance", async (symbols) => ({
+      series: (symbols as readonly string[]).map((asset) => ({
+        asset,
+        dates: ["2026-01-01T00:00:00.000Z"],
+        prices: [asset === "BTC" ? 64000 : Number.NaN],
+        trend: [asset === "BTC" ? 64000 : Number.NaN],
+        source: "binance" as const,
+      })),
+      window: "30D" as TimeWindow,
+      provider: "binance" as const,
+    }));
+    const full = provider("coingecko", async () => ({
+      series: [
+        {
+          asset: "BTC",
+          dates: ["2026-01-01T00:00:00.000Z"],
+          prices: [64000],
+          trend: [64000],
+          source: "coingecko" as const,
+        },
+        {
+          asset: "ETH",
+          dates: ["2026-01-01T00:00:00.000Z"],
+          prices: [3200],
+          trend: [3200],
+          source: "coingecko" as const,
+        },
+      ],
+      window: "30D" as TimeWindow,
+      provider: "coingecko" as const,
+    }));
+    const chain = createMarketChain(
+      [partial, full],
+      { warn: vi.fn() },
+      { timeoutMs: 50 },
+    );
+    // Chain validation rejects the non-finite ETH point, so the whole
+    // binance snapshot fails over instead of returning a partial.
+    await expect(
+      chain(["BTC", "ETH"], "30D", new AbortController().signal),
+    ).resolves.toMatchObject({ provider: "coingecko" });
   });
 });
 
@@ -608,6 +692,7 @@ describe("market chain snapshot validation (#138 hardening)", () => {
       },
     ];
     for (const candidate of bad) {
+      clearMarketCache();
       const chain = createMarketChain(
         [
           provider("binance", async () => candidate),
@@ -620,5 +705,76 @@ describe("market chain snapshot validation (#138 hardening)", () => {
         chain(["BTC"], "30D", new AbortController().signal),
       ).resolves.toMatchObject({ provider: "coingecko" });
     }
+  });
+});
+
+describe("market cache and metrics (#172)", () => {
+  it("caches successful snapshots; a hit skips every provider", async () => {
+    const binance = provider("binance", async () => snapshot("binance"));
+    const chain = createMarketChain([binance], logger, { timeoutMs: 50 });
+    const signal = new AbortController().signal;
+    const first = await chain(SYMBOLS, WINDOW, signal);
+    const second = await chain(SYMBOLS, WINDOW, signal);
+    expect(second).toEqual(first);
+    expect(binance.fetchSnapshot).toHaveBeenCalledTimes(1);
+    expect(getMarketMetrics()["binance"]?.cacheHits).toBe(1);
+  });
+
+  it("never caches failures; the next call retries", async () => {
+    let calls = 0;
+    const flaky = provider("binance", async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("down");
+      return snapshot("binance");
+    });
+    const chain = createMarketChain(
+      [flaky, provider("coingecko", async () => snapshot("coingecko"))],
+      { warn: vi.fn() },
+      { timeoutMs: 50 },
+    );
+    const signal = new AbortController().signal;
+    await chain(SYMBOLS, WINDOW, signal);
+    clearMarketCache();
+    await chain(SYMBOLS, WINDOW, signal);
+    expect(calls).toBe(2);
+  });
+
+  it("keys the cache by symbol set; a different set fetches again", async () => {
+    const binance = provider("binance", async (symbols) => ({
+      series: symbols.map((asset) => ({
+        asset,
+        dates: ["2026-01-01T00:00:00.000Z"],
+        prices: [1],
+        trend: [1],
+        source: "binance" as const,
+      })),
+      window: "30D" as TimeWindow,
+      provider: "binance" as const,
+    }));
+    const chain = createMarketChain([binance], logger, { timeoutMs: 50 });
+    const signal = new AbortController().signal;
+    await chain(["BTC"], "30D", signal);
+    await chain(["BTC", "ETH"], "30D", signal);
+    expect(binance.fetchSnapshot).toHaveBeenCalledTimes(2);
+  });
+
+  it("records per-provider latency and error counters", async () => {
+    const chain = createMarketChain(
+      [
+        provider("binance", async () => {
+          throw new Error("down");
+        }),
+        provider("coingecko", async () => snapshot("coingecko")),
+      ],
+      { warn: vi.fn() },
+      { timeoutMs: 50 },
+    );
+    await chain(SYMBOLS, WINDOW, new AbortController().signal);
+    const metrics = getMarketMetrics();
+    expect(metrics["binance"]?.calls).toBe(1);
+    expect(metrics["binance"]?.errors).toBe(1);
+    expect(metrics["coingecko"]?.calls).toBe(1);
+    expect(metrics["coingecko"]?.errors ?? 0).toBe(0);
+    expect(metrics["coingecko"]?.totalLatencyMs).toBeGreaterThanOrEqual(0);
   });
 });

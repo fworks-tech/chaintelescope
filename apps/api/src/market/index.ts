@@ -9,7 +9,12 @@ import { CoinGeckoMarketProvider } from "./providers/coingecko.js";
 import { MockMarketProvider } from "./providers/mock.js";
 
 export type { MarketProvider } from "./provider.js";
-export { createMarketChain } from "./chain.js";
+export {
+  clearMarketCache,
+  createMarketChain,
+  getMarketMetrics,
+  resetMarketMetrics,
+} from "./chain.js";
 export { fetchPriceTrend } from "./service.js";
 export { MockMarketProvider } from "./providers/mock.js";
 export { BinanceMarketProvider } from "./providers/binance.js";
