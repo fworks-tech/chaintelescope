@@ -54,6 +54,10 @@ export function buildApi(
       cpu: 512,
       memoryLimitMiB: 1024,
       desiredCount: 1,
+      // Single-task service: keep the old task running while the new one
+      // starts, and roll back fast instead of hanging a bad deploy for hours.
+      minHealthyPercent: 100,
+      circuitBreaker: { rollback: true },
       assignPublicIp: true,
       taskSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       taskImageOptions: {
