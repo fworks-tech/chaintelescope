@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Layout from "./components/Layout.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import News from "./pages/News.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Placeholder from "./pages/Placeholder.tsx";
 
@@ -11,12 +12,7 @@ const router = createBrowserRouter([
       { index: true, element: <Dashboard /> },
       {
         path: "news",
-        element: (
-          <Placeholder
-            title="News"
-            description="Headlines matched to the current watchlist, deduplicated by content hash."
-          />
-        ),
+        element: <News />,
       },
       {
         path: "alerts",
