@@ -1,13 +1,15 @@
 import * as cdk from "aws-cdk-lib";
 import { Template } from "aws-cdk-lib/assertions";
-import { describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 import { buildApi } from "../lib/api.js";
 import { buildData } from "../lib/data.js";
 import { buildNewsJob } from "../lib/jobs.js";
 import { buildNetwork } from "../lib/network.js";
 import { buildObservability } from "../lib/observability.js";
 
-function synth() {
+let template: Template;
+
+beforeAll(() => {
   const app = new cdk.App();
   const stack = new cdk.Stack(app, "Test", {
     env: { account: "123456789012", region: "us-east-1" },
@@ -19,12 +21,11 @@ function synth() {
   });
   const jobs = buildNewsJob(stack, network, data, api.cluster);
   buildObservability(stack, api, data, jobs);
-  return Template.fromStack(stack);
-}
+  template = Template.fromStack(stack);
+});
 
 describe("chaintelescope stack", () => {
   test("provisions VPC, ALB, Fargate, Postgres, and alarms", () => {
-    const template = synth();
     template.resourceCountIs("AWS::EC2::VPC", 1);
     template.resourceCountIs(
       "AWS::ElasticLoadBalancingV2::LoadBalancer",
@@ -37,7 +38,6 @@ describe("chaintelescope stack", () => {
   });
 
   test("runs the news ingest hourly as a small run-to-complete task", () => {
-    const template = synth();
     template.hasResourceProperties("AWS::Events::Rule", {
       ScheduleExpression: "cron(0 * * * ? *)",
     });
@@ -90,7 +90,6 @@ describe("chaintelescope stack", () => {
   });
 
   test("uses cheap dev-baseline data settings", () => {
-    const template = synth();
     template.hasResourceProperties("AWS::RDS::DBInstance", {
       DBInstanceClass: "db.t4g.micro",
       AllocatedStorage: "20",
@@ -100,7 +99,6 @@ describe("chaintelescope stack", () => {
   });
 
   test("health check hits /healthz", () => {
-    const template = synth();
     template.hasResourceProperties(
       "AWS::ElasticLoadBalancingV2::TargetGroup",
       { HealthCheckPath: "/healthz" },
