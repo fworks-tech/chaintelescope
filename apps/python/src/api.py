@@ -129,18 +129,3 @@ def subscribe(
     if result is None:
         return {"success": False, "error": "Failed to save subscription"}
     return {"success": True, "email": result.email}
-
-
-@app.get("/api/newsletter/subscriptions")
-def subscriptions():
-    from src.data.newsletter.store import list_subscriptions
-
-    return [
-        {
-            "email": sub.email,
-            "frequency": sub.frequency,
-            "format": sub.format,
-            "created_at": sub.created_at,
-        }
-        for sub in list_subscriptions()
-    ]
