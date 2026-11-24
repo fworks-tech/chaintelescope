@@ -44,7 +44,7 @@ CI (`build` job) runs the generator after `pnpm -r build` and fails on `git diff
 | `GET /api/price-trend`       | 200       | 200  | —     | 422             | —                | —        |
 | `GET /api/snapshot`          | 503       | 503  | —     | —               | —                | —        |
 
-Every `429` from the token bucket (`#121`) is outside this matrix; it is covered by `test/rate-limit.integration.test.ts` with a frozen clock. Every error body follows `{ error: { code, message, requestId }, details? }` from `#118`.
+Every `429` from the token bucket (`#121`) is outside this matrix; it is covered by `test/rate-limit.integration.test.ts` with a frozen clock. The bucket has four rules: `/scans` 30/min, `/api` 30/min (this also gates `price-trend`/`snapshot`), `/auth/login` 5/min, other `/auth/*` 10/min. Every error body follows `{ error: { code, message, requestId }, details? }` from `#118`.
 
 ## Not registered
 

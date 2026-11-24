@@ -58,7 +58,7 @@ flowchart LR
   Client -.->|not wired yet| Hapi
   Hapi --> Shared
   Hapi --> Stream
-  Hapi -.->|schema not created yet| DB
+  Hapi --> DB
 ```
 
 What exists: `buildServer()` composes plugins (`db-pool`, `health`), `env.ts` validates the environment at import time, `hashing/` + `workers/` provide the non-blocking scan path, and the route surface covers health, auth, scans, newsletter, and `GET /api/price-trend` (see `apps/api/test/matrix.integration.test.ts` for the pinned status matrix). What does not exist yet: `GET /api/snapshot` parity (returns 503 until news/alerts/kpi/risk land in #122), `news`/`alerts` routes, and a market-data scheduler. See [ADR-0001](adr/0001-node-ts-refactor.md) for the cutover decision and [ADR-0004](adr/0004-postgres-over-json-files.md) for the persistence direction.
@@ -201,7 +201,7 @@ See `apps/python/src/data/dashboard_query.py` for the `DashboardSnapshot` datacl
   - `lint-and-typecheck` — `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app)
   - `test-workspaces` — `pnpm test` (builds first, then Vitest unit suites), then `pnpm test:integration` against the `postgres:16-alpine` service container (migrations round-tripped up/down/up first)
   - `build` — `pnpm -r build`
-  - `python-app` — Ruff lint/format, `py_compile` + import smoke check, and the 74 Python unittest cases
+  - `python-app` — Ruff lint/format, `py_compile` + import smoke check, and the 94 Python unittest cases
   - `quality-gate` — requires all four
 - **Visual regression**: deferred. The planned pilot is Playwright snapshot checks against `streamlit run apps/python/app.py` on localhost for the dashboard and one alternate route, with dynamic KPI and timestamp regions masked. CI does not run browser screenshots today.
 

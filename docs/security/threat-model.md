@@ -69,7 +69,7 @@ operator ──environment──▶ API process
    `insertInto`/`.query(` inside `src/db/`. Request values are constrained by Joi
    first.
 5. **XSS and clickjacking against the API origin.** `Content-Security-Policy:
-default-src 'none'`, `X-Frame-Options: DENY`, `nosniff` and a strict referrer
+default-src 'none'; frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff` and a strict referrer
    policy; the client never stores tokens in `localStorage` (the refresh token
    is `HttpOnly`).
 6. **Secret leak from the process environment.** The pepper and JWT secret are

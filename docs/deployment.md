@@ -4,24 +4,23 @@
 
 ChainTelescope is a Streamlit app designed to run behind a reverse proxy on a VPS or container environment. This guide covers Docker deployment, environment configuration, domain setup, and CI/CD.
 
-## Quick start (Docker)
+## Quick start (local)
 
 ```bash
-# Build and start all services
+# Build and start the Streamlit app locally (no compose file in this repo)
 git clone https://github.com/fworks-tech/chain-telescope.git
-cd chain-telescope
-docker compose up --build -d
+cd chain-telescope/apps/python
+pip install -r requirements.txt
+streamlit run app.py
 ```
 
 The app is served at `http://localhost:8501`.
 
 ## Environment variables
 
-Copy `.env.example` to `.env`:
-
-```bash
-cp .env.example .env
-```
+Copy the Node example for local API work (`apps/api/.env.example` → your shell or
+`node --env-file`); the Python app reads plain environment variables and
+Streamlit secrets directly, there is no Python `.env.example` in this repo.
 
 Fill in the values:
 
@@ -36,7 +35,6 @@ Fill in the values:
 | `NEWS_FEED_URLS`                 | No                 | CoinDesk + Cointelegraph RSS | Comma-separated RSS/Atom URLs                                                                     |
 | `NEWSLETTER_PROVIDER`            | No                 | `stub`                       | Delivery adapter name                                                                             |
 | `NEWSLETTER_API_KEY`             | For non-stub       | —                            | Provider credential                                                                               |
-| `SENTRY_DSN`                     | For error tracking | —                            | Sentry project DSN                                                                                |
 
 See [configuration.md](configuration.md) for details.
 
@@ -129,7 +127,7 @@ You can also deploy directly on [Streamlit Community Cloud](https://streamlit.io
 
 1. Push to GitHub
 2. Log in to share.streamlit.io
-3. Deploy from `fworks-tech/chain-telescope`, branch `main`, entrypoint `app.py`
+3. Deploy from `fworks-tech/chain-telescope`, branch `main`, entrypoint `apps/python/app.py`
 4. Set secrets via the Streamlit Cloud dashboard UI
 
 Limitations: no background workers, no custom domain on free tier, ephemeral storage.

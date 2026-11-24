@@ -69,12 +69,12 @@ hasheyes/
 - [ ] Risk page renders risk scores from `/api/snapshot`
 - [ ] Assistant page sends/receives messages from the assistant API
 - [ ] `streamlit run app.py` still works without any changes
-- [ ] All 74 existing tests pass
+- [ ] All 94 existing tests pass
 - [ ] Ruff lint and format clean
 
 ## Testing Strategy
 
-- Existing 74 unit tests must pass unchanged (proof that FastAPI + data layer is untouched)
+- Existing 94 unit tests must pass unchanged (proof that FastAPI + data layer is untouched)
 - Manual QA on Vercel deployment URL for React pages
 - No new Python tests needed — no Python code changes beyond `pyproject.toml`
 
@@ -96,3 +96,4 @@ This MVP is the first step of a gradual migration:
 1. **MVP** (this spec) — FastAPI + React SPA with Dashboard, News, Risk, Assistant pages
 2. **Phase 2** — Add remaining pages (Newsletter, Alerts standalone), parity with Streamlit
 3. **Phase 3** — Deprecate Streamlit, remove `app.py` and `pages/`
+> Note (2026-11-24): Phase 3 contradicts ADR-0008 — the Python app is frozen for features but keeps getting bug fixes as the reference UI until React reaches parity; it is not scheduled for removal.

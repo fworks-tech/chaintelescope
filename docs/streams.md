@@ -4,7 +4,9 @@
 
 [ Readable Source ] (fs.createReadStream / HTTP multipart body)
        │
-       │ (Emits Buffer chunks <= highWaterMark, e.g. 64KB)
+       │ (Emits Buffer chunks <= highWaterMark — 64 KiB default for
+       │  fs.createReadStream, 16 KiB for most other Node readables;
+       │  treat the value as implementation-dependent)
        ▼
 [ ProgressTransform ] (Computes byte rate, throttles progress events to 250ms)
        │

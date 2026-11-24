@@ -6,6 +6,7 @@
 ## Context
 
 The repository holds two stacks during migration: a working Python 3.11 / Streamlit app at the repo root and a Node.js 20+ / TypeScript monorepo under `apps/` + `packages/` (see `docs/port-inventory.md` for the honest per-module scorecard). The Python side is the only working product today; the Node API serves auth, scans, newsletter, and `GET /api/price-trend`, with `GET /api/snapshot` returning 503 until non-market dependencies land (#122). `apps/web` is still the Vite starter template.
+> Note (2026-11-24): partly stale — the Python app now lives under `apps/python/` (#168) and `apps/web` is a router + Dashboard + typed price-trend client shell (#169); see `docs/port-inventory.md` for the current scorecard.
 
 Three structural problems block the next phase:
 

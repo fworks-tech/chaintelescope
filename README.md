@@ -94,7 +94,7 @@ Confirm the app behaves as expected before opening a pull request.
 - [ ] `streamlit run apps/python/app.py` starts without import errors
 - [ ] Dashboard, Alerts, News, Risk, and Newsletter routes render in the browser
 - [ ] Newsletter subscribe shows success for a valid email and an error for invalid input
-- [ ] `python -m unittest discover -s apps/python/tests -t apps/python -p 'test_*.py'` passes (74 tests)
+- [ ] `python -m unittest discover -s apps/python/tests -t apps/python -p 'test_*.py'` passes (94 tests)
 - [ ] `ruff check apps/python` and `ruff format --check apps/python` pass when Ruff is installed locally
 - [ ] `python -m unittest discover -s apps/python/tests -t apps/python -p test_source_inventory_note.py` passes for the M4 source inventory note contract
 - [ ] `pnpm test` passes for the Node workspaces
@@ -160,7 +160,7 @@ On push to `main` and on pull requests to `main`, GitHub Actions runs the gates 
 | `lint-and-typecheck` | `pnpm -r typecheck` (shared, api, web) and `pnpm -r lint` (oxlint on the web app) |
 | `test-workspaces` | `pnpm test` then `pnpm test:integration` — builds first, Vitest unit suites, then the `*.integration.test.ts` suites against the `postgres:16-alpine` service container. |
 | `build` | `pnpm -r build` across the monorepo |
-| `python-app` | Ruff lint + format check, `py_compile` and import smoke check, and the 74 Python unittest cases (including the Streamlit `AppTest` smoke run) |
+| `python-app` | Ruff lint + format check, `py_compile` and import smoke check, and the 94 Python unittest cases (including the Streamlit `AppTest` smoke run) |
 | `quality-gate` | Requires all four jobs above |
 
 Local equivalents: see **Quality gates** in [`AGENTS.md`](AGENTS.md).

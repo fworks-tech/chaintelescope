@@ -39,7 +39,7 @@ curl -s -o /dev/null -w "%{http_code}" https://cointelegraph.com/rss
 | Streamlit UI | HTTP 200 on :8501 | Every 30s (Docker healthcheck) |
 | News feeds | RSS resolves | Daily |
 | Market APIs | Price chart shows real data | Daily |
-| Newsletter storage | `data/newsletter_subscriptions.json` writable | Weekly |
+| Newsletter storage | `$NEWSLETTER_DATA_DIR/newsletter_subscriptions.json` (default `data/` relative to the process working directory) writable | Weekly |
 | Disk space | `df -h` < 80% | Weekly |
 
 ## Monitoring
@@ -72,17 +72,13 @@ For production, add a free uptime monitor:
 - [Better Uptime](https://betteruptime.com/) — free tier with status page
 - Point to `https://chain-telescope.example.com`
 
-### Error tracking
-
-If `SENTRY_DSN` is configured, errors in the Streamlit app and background workers are automatically reported to Sentry.
-
 ## Backups
 
 ### What to back up
 
 | Path | Contents | Backup strategy |
 |------|----------|----------------|
-| `data/newsletter_subscriptions.json` | User subscriptions | Daily via cron |
+| `$NEWSLETTER_DATA_DIR/newsletter_subscriptions.json` (default `data/` under the process working directory) | User subscriptions | Daily via cron |
 | `apps/python/.streamlit/secrets.toml` | Secrets (if using file-based) | Manual, encrypted |
 | `.env` | Environment variables | Manual, encrypted |
 
@@ -93,7 +89,8 @@ If `SENTRY_DSN` is configured, errors in the Streamlit app and background worker
 #!/bin/bash
 BACKUP_DIR=/var/backups/chain-telescope
 mkdir -p $BACKUP_DIR
-cp /opt/chain-telescope/data/newsletter_subscriptions.json $BACKUP_DIR/subscriptions-$(date +%Y%m%d).json
+SRC_DIR=${NEWSLETTER_DATA_DIR:-/opt/chain-telescope/apps/python/data}
+cp $SRC_DIR/newsletter_subscriptions.json $BACKUP_DIR/subscriptions-$(date +%Y%m%d).json
 find $BACKUP_DIR -name "subscriptions-*.json" -mtime +30 -delete
 ```
 
@@ -148,9 +145,9 @@ Symptom: Price chart shows mock data, news shows fallback headlines
    ```bash
    docker exec chain-telescope-streamlit env | grep NEWSLETTER
    ```
-2. Check subscription storage:
+2. Check subscription storage (same env-relative path the app writes):
    ```bash
-   cat data/newsletter_subscriptions.json
+   cat ${NEWSLETTER_DATA_DIR:-data}/newsletter_subscriptions.json
    ```
 3. Trigger dry run:
    ```bash
