@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
+  Card,
+  CardContent,
+  CircularProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
+import {
   CartesianGrid,
   Line,
   LineChart,
@@ -10,6 +18,7 @@ import {
 } from "recharts";
 import type { PriceTrend } from "@chaintelescope/shared";
 import { ApiError, getPriceTrend } from "../api/client.js";
+import { theme } from "../theme.ts";
 
 interface TrendPoint {
   readonly date: string;
@@ -54,62 +63,96 @@ export default function Dashboard() {
     [trend],
   );
 
-  if (error) return <p role="alert">Price trend unavailable: {error}</p>;
-  if (!trend) return <p>Loading price trend…</p>;
+  if (error)
+    return <Alert severity="error">Price trend unavailable: {error}</Alert>;
+  if (!trend)
+    return (
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+        <CircularProgress size={20} />
+        <Typography>Loading price trend…</Typography>
+      </Stack>
+    );
 
   const first = trend.prices[0] ?? 0;
   const last = trend.prices[trend.prices.length - 1] ?? 0;
   const change = first === 0 ? 0 : ((last - first) / first) * 100;
+  const up = change >= 0;
 
   return (
-    <section>
-      <h1>
-        {trend.asset} · {trend.source}
-      </h1>
-      <dl>
-        <div>
-          <dt>Latest</dt>
-          <dd>{last.toFixed(2)}</dd>
-        </div>
-        <div>
-          <dt>30-day change</dt>
-          <dd>
-            {change >= 0 ? "+" : ""}
-            {change.toFixed(2)}%
-          </dd>
-        </div>
-        <div>
-          <dt>Points</dt>
-          <dd>{trend.prices.length}</dd>
-        </div>
-      </dl>
-      <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" minTickGap={48} tick={{ fontSize: 12 }} />
-          <YAxis
-            domain={["auto", "auto"]}
-            tick={{ fontSize: 12 }}
-            tickFormatter={(v: number) => v.toLocaleString()}
-          />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="price"
-            dot={false}
-            strokeWidth={2}
-            name={`${trend.asset} price`}
-          />
-          <Line
-            type="monotone"
-            dataKey="trend"
-            dot={false}
-            strokeDasharray="5 5"
-            strokeWidth={1}
-            name="trend"
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </section>
+    <Stack spacing={2}>
+      <Card>
+        <CardContent>
+          <Typography variant="h5" component="h1">
+            {trend.asset} · {trend.source}
+          </Typography>
+          <Stack direction="row" spacing={4} sx={{ mt: 1 }}>
+            <span>
+              <Typography variant="caption" color="text.secondary">
+                Latest
+              </Typography>
+              <Typography variant="h6">{last.toFixed(2)}</Typography>
+            </span>
+            <span>
+              <Typography variant="caption" color="text.secondary">
+                30-day change
+              </Typography>
+              <Typography
+                variant="h6"
+                color={up ? "success.main" : "error.main"}
+              >
+                {up ? "+" : ""}
+                {change.toFixed(2)}%
+              </Typography>
+            </span>
+            <span>
+              <Typography variant="caption" color="text.secondary">
+                Points
+              </Typography>
+              <Typography variant="h6">{trend.prices.length}</Typography>
+            </span>
+          </Stack>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart
+              data={points}
+              margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="date"
+                minTickGap={48}
+                tick={{ fontSize: 12, fill: "#475569" }}
+              />
+              <YAxis
+                domain={["auto", "auto"]}
+                tick={{ fontSize: 12, fill: "#475569" }}
+                tickFormatter={(v: number) => v.toLocaleString()}
+              />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="price"
+                dot={false}
+                strokeWidth={2}
+                stroke={theme.palette.primary.main}
+                name={`${trend.asset} price`}
+              />
+              <Line
+                type="monotone"
+                dataKey="trend"
+                dot={false}
+                strokeDasharray="5 5"
+                strokeWidth={1}
+                stroke="#94a3ff"
+                name="trend"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    </Stack>
   );
 }

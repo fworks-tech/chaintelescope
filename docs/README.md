@@ -18,6 +18,7 @@ Single entry point for ChainTelescope documentation. If a doc is not listed here
 - [`adr/0006-testing-strategy.md`](adr/0006-testing-strategy.md) — testing and verification strategy
 - [`adr/0007-vertical-slices-and-truth-gates.md`](adr/0007-vertical-slices-and-truth-gates.md) — vertical slices, plain-SQL migrations, truth gates
 - [`adr/0008-monorepo-target-architecture.md`](adr/0008-monorepo-target-architecture.md) — multi-app monorepo target (`apps/*`, `packages/*`, `infra/`); supersedes the `frontend/` layout in `spec/100`
+- [`adr/0009-mui-tailwind-ui-stack.md`](adr/0009-mui-tailwind-ui-stack.md) — MUI + Tailwind as the web UI stack, themed from the Streamlit tokens
 - [`adr/archive/`](adr/archive/) — superseded records (do not rewrite; see ADR-0007)
 
 ## Specs (canonical — `tasks/` retired)

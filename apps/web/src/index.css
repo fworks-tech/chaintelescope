@@ -1,20 +1,28 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Design tokens ported 1:1 from apps/python/src/styles.py.
+   No Tailwind preflight: MUI CssBaseline owns the reset. */
+
 :root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
+  --bg: #eef2f8;
+  --panel: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #3b5bff;
+  --accent-soft: #94a3ff;
+  --ok: #12b76a;
+  --warn: #f79009;
+  --bad: #f04438;
+  --border: #d8dee9;
 }
 
 body {
   margin: 0;
-}
-
-header nav {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid currentColor;
-}
-
-main {
-  padding: 1rem;
-  max-width: 60rem;
+  background: radial-gradient(
+    circle at 10% 0%,
+    #e8eeff 0%,
+    var(--bg) 45%,
+    #f7f9fc 100%
+  );
 }
