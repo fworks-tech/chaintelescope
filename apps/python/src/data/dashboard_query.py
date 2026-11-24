@@ -1,6 +1,10 @@
 from dataclasses import dataclass
+from typing import Any
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:  # serverless slim env: snapshots carry plain lists
+    pd = None  # type: ignore[assignment]
 
 from src.data.alerts.rules import evaluate_alert_rules
 from src.data.market.service import fetch_price_trend
@@ -23,9 +27,9 @@ class DashboardSnapshot:
     primary_asset: str
     price_dates: list
     price_values: list
-    price_trend: pd.Series
+    price_trend: Any
     price_source: str
-    trending: pd.DataFrame
+    trending: Any
     kpis: list[dict]
     risk_scores: list[int]
     risk_labels: list[str]

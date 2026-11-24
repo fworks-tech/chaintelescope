@@ -1,0 +1,10 @@
+# Slim serverless install for Vercel (hasheyes-py).
+# Full local/Streamlit deps stay in requirements.txt (pandas, ccxt,
+# streamlit, plotly exceed the 250 MB serverless limit and break `pip
+# install`, which used to surface as `ModuleNotFoundError: fastapi`).
+# The API hot path runs without pandas/ccxt via pure-python fallbacks.
+fastapi>=0.111.0
+pydantic>=2.8.0
+httpx>=0.27.0
+python-dotenv>=1.0.1
+loguru>=0.7.2

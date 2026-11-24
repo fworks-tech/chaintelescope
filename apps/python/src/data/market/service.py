@@ -1,14 +1,24 @@
 from datetime import datetime
 
-import pandas as pd
 from loguru import logger
-from src.data.market.ccxt_adapter import EXCHANGE_NAMES, fetch_ccxt_series
-from src.data.market.config import load_market_config
 from src.data.mock_market import TIME_WINDOW_DAYS, price_trend_series
 
 
+def _rolling_mean(values, window=5):
+    out = []
+    for i, _ in enumerate(values):
+        part = values[max(0, i - window + 1) : i + 1]
+        out.append(sum(part) / len(part))
+    return out
+
+
 def fetch_price_trend(asset: str, days: int, time_window: str, market_source: str | None = None):
-    provider = (market_source or load_market_config().provider).lower()
+    try:
+        from src.data.market.config import load_market_config
+
+        provider = (market_source or load_market_config().provider).lower()
+    except Exception:
+        provider = (market_source or "auto").lower()
     if provider == "mock":
         return _mock_series(asset, days, time_window)
 
@@ -19,7 +29,12 @@ def fetch_price_trend(asset: str, days: int, time_window: str, market_source: st
             if result:
                 dates, prices, source = result
                 dates = _normalize_dates(dates)
-                trend = pd.Series(prices).rolling(5, min_periods=1).mean()
+                try:
+                    import pandas as pd
+
+                    trend = pd.Series(prices).rolling(5, min_periods=1).mean()
+                except ImportError:
+                    trend = _rolling_mean(prices)
                 return dates, prices, trend, source
         except Exception as exc:
             logger.warning("Provider {} failed for {}: {}", name, asset, exc)
@@ -29,12 +44,30 @@ def fetch_price_trend(asset: str, days: int, time_window: str, market_source: st
 
 
 def _provider_chain(provider: str) -> list[str]:
+    try:
+        from src.data.market.ccxt_adapter import EXCHANGE_NAMES
+    except ImportError:
+        return []
     if provider in EXCHANGE_NAMES:
         return [provider]
     return list(EXCHANGE_NAMES)
 
 
+def fetch_ccxt_series(*args, **kwargs):
+    """Lazy shim: keeps `service.fetch_ccxt_series` patchable in tests
+    while not importing ccxt (heavy) at module load on slim serverless env."""
+    try:
+        from src.data.market.ccxt_adapter import fetch_ccxt_series as _impl
+    except ImportError:  # slim serverless env has no ccxt
+        return None
+    return _impl(*args, **kwargs)
+
+
 def _fetch_provider_series(provider: str, asset: str, days: int):
+    try:
+        from src.data.market.ccxt_adapter import EXCHANGE_NAMES
+    except ImportError:
+        return None
     if provider in EXCHANGE_NAMES:
         return fetch_ccxt_series(provider, asset, days)
     return None
@@ -49,15 +82,25 @@ def _mock_series(asset: str, days: int, time_window: str):
 
 
 def _normalize_dates(dates):
+    try:
+        import pandas as pd
+    except ImportError:
+        pd = None  # type: ignore[assignment]
     normalized = []
     for value in dates:
         try:
             if isinstance(value, datetime):
                 normalized.append(value)
             elif isinstance(value, (int, float)):
-                normalized.append(pd.to_datetime(value, unit="ms").to_pydatetime())
+                if pd is None:
+                    normalized.append(datetime.fromtimestamp(value / 1000))
+                else:
+                    normalized.append(pd.to_datetime(value, unit="ms").to_pydatetime())
             else:
-                normalized.append(pd.to_datetime(value).to_pydatetime())
+                if pd is None:
+                    normalized.append(datetime.fromisoformat(str(value)))
+                else:
+                    normalized.append(pd.to_datetime(value).to_pydatetime())
         except Exception:
             normalized.append(datetime.now())
     return normalized

@@ -1,7 +1,10 @@
 import math
 from datetime import datetime, timedelta
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:  # serverless slim env: pure-python fallback below
+    pd = None  # type: ignore[assignment]
 
 from src.data.assets import WATCHLIST_OPTIONS
 
@@ -85,6 +88,8 @@ def trending_report_frame(watchlist=None, trend_filter="all"):
                 "_change": _change_percent(change),
             }
         )
+    if pd is None:  # shortcut: slim serverless env has no pandas; filter/sort plain rows
+        return _filter_trending_rows(rows, trend_filter)
     frame = pd.DataFrame(rows)
     if trend_filter == "top_gainers":
         frame = frame[frame["_change"] > 0].sort_values("_change", ascending=False)
@@ -99,11 +104,40 @@ def trending_report_frame(watchlist=None, trend_filter="all"):
     return frame.drop(columns="_change").reset_index(drop=True)
 
 
+def _filter_trending_rows(rows, trend_filter="all"):
+    if trend_filter == "top_gainers":
+        rows = [r for r in rows if r["_change"] > 0]
+        rows.sort(key=lambda r: r["_change"], reverse=True)
+    elif trend_filter == "top_losers":
+        rows = [r for r in rows if r["_change"] < 0]
+        rows.sort(key=lambda r: r["_change"])
+    elif trend_filter == "hot":
+        rows = [
+            r
+            for r in rows
+            if r["Sentiment"] == "Very Bullish"
+            or r["_change"] >= 10
+            or (r["Risk"] == "High" and r["_change"] > 0)
+        ]
+        rows.sort(key=lambda r: r["_change"], reverse=True)
+    return [{k: v for k, v in r.items() if k != "_change"} for r in rows]
+
+
+def _rolling_mean(values, window=5):
+    out = []
+    for i, _ in enumerate(values):
+        part = values[max(0, i - window + 1) : i + 1]
+        out.append(sum(part) / len(part))
+    return out
+
+
 def price_trend_series(asset="BTC", days=30, time_window="30D"):
     del time_window
     base = _mock_base_price(asset)
     dates = [datetime.today() - timedelta(days=(days - 1 - index)) for index in range(days)]
     prices = [base + 1200 * math.sin(index / 3) + index * (base * 0.0007) for index in range(days)]
+    if pd is None:
+        return dates, prices, _rolling_mean(prices)
     trend = pd.Series(prices).rolling(5, min_periods=1).mean()
     return dates, prices, trend
 
