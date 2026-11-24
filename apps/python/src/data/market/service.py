@@ -41,6 +41,8 @@ def _rolling_mean(values, window=5):
 
 def fetch_price_trend(asset: str, days: int, time_window: str, market_source: str | None = None):
     asset = _sanitize_asset(asset)
+    # Window is the source of truth; days is legacy query compat (#175).
+    sized_days = TIME_WINDOW_DAYS.get(time_window, days)
     try:
         from src.data.market.config import load_market_config
 
@@ -48,12 +50,12 @@ def fetch_price_trend(asset: str, days: int, time_window: str, market_source: st
     except Exception:
         provider = (market_source or "auto").lower()
     if provider == "mock":
-        return _mock_series(asset, days, time_window)
+        return _mock_series(asset, sized_days, time_window)
 
     providers = _provider_chain(provider)
     for name in providers:
         try:
-            result = _fetch_provider_series(name, asset, days)
+            result = _fetch_provider_series(name, asset, sized_days)
             if result:
                 dates, prices, source = result
                 dates = _normalize_dates(dates)
@@ -68,7 +70,7 @@ def fetch_price_trend(asset: str, days: int, time_window: str, market_source: st
             logger.warning("Provider {} failed for {}: {}", name, asset, exc)
             continue
 
-    return _mock_series(asset, days, time_window)
+    return _mock_series(asset, sized_days, time_window)
 
 
 def _provider_chain(provider: str) -> list[str]:
