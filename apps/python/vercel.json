@@ -1,6 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "pip install -r requirements-vercel.txt",
-  "functions": { "api/index.py": { "runtime": "python3.11" } },
-  "rewrites": [{ "source": "/api/:path*", "destination": "/api/index.py" }]
+  "installCommand": "pip install -r requirements-vercel.txt"
 }
