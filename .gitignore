@@ -17,4 +17,5 @@ cdk.out/
 *.tsbuildinfo
 coverage/
 .prof/
+.opencode/
 
