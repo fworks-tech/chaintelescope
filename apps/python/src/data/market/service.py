@@ -1,7 +1,34 @@
+import re
+import time
 from datetime import datetime
 
 from loguru import logger
+from src.data.market.http_adapter import fetch_http_series
+from src.data.market.providers import PROVIDER_NAMES
 from src.data.mock_market import TIME_WINDOW_DAYS, price_trend_series
+
+_CACHE: dict[tuple[str, str, int], tuple[float, tuple]] = {}
+_CACHE_TTL_SECONDS = 60
+
+
+def _ccxt_available() -> bool:
+    try:
+        import importlib.util
+
+        return importlib.util.find_spec("ccxt") is not None
+    except Exception:
+        return False
+
+
+def _now() -> float:
+    return time.time()
+
+
+def _sanitize_asset(asset: str) -> str:
+    """Uppercase allowlist for venue ids and log lines (also uppercases)."""
+    if not isinstance(asset, str) or not asset.strip():
+        return "BTC"
+    return re.sub(r"[^A-Z0-9._-]", "", asset.strip().upper())
 
 
 def _rolling_mean(values, window=5):
@@ -13,6 +40,7 @@ def _rolling_mean(values, window=5):
 
 
 def fetch_price_trend(asset: str, days: int, time_window: str, market_source: str | None = None):
+    asset = _sanitize_asset(asset)
     try:
         from src.data.market.config import load_market_config
 
@@ -44,13 +72,9 @@ def fetch_price_trend(asset: str, days: int, time_window: str, market_source: st
 
 
 def _provider_chain(provider: str) -> list[str]:
-    try:
-        from src.data.market.ccxt_adapter import EXCHANGE_NAMES
-    except ImportError:
-        return []
-    if provider in EXCHANGE_NAMES:
+    if provider in PROVIDER_NAMES:
         return [provider]
-    return list(EXCHANGE_NAMES)
+    return list(PROVIDER_NAMES)
 
 
 def fetch_ccxt_series(*args, **kwargs):
@@ -64,13 +88,21 @@ def fetch_ccxt_series(*args, **kwargs):
 
 
 def _fetch_provider_series(provider: str, asset: str, days: int):
-    try:
-        from src.data.market.ccxt_adapter import EXCHANGE_NAMES
-    except ImportError:
+    if provider not in PROVIDER_NAMES:
         return None
-    if provider in EXCHANGE_NAMES:
-        return fetch_ccxt_series(provider, asset, days)
-    return None
+    # shortcut: per-process TTL cache; shared/Redis caching lands in #172
+    key = (provider, asset, days)
+    now = _now()
+    hit = _CACHE.get(key)
+    if hit is not None and hit[0] > now:
+        return hit[1]
+    if _ccxt_available():
+        result = fetch_ccxt_series(provider, asset, days)
+    else:
+        result = fetch_http_series(provider, asset, days)
+    if result:
+        _CACHE[key] = (now + _CACHE_TTL_SECONDS, result)
+    return result
 
 
 def _mock_series(asset: str, days: int, time_window: str):

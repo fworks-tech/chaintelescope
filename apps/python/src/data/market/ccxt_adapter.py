@@ -1,9 +1,8 @@
 import datetime
 
 import ccxt
+from src.data.market.providers import PROVIDER_NAMES as EXCHANGE_NAMES
 from tenacity import retry, stop_after_attempt, wait_exponential
-
-EXCHANGE_NAMES = ("binance", "coingecko", "coinbase")
 
 
 def _build_symbol(asset: str, exchange_name: str) -> str:

@@ -9,6 +9,9 @@ from src.data.news.ingestion import load_news_items
 
 
 class LoggingTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     @patch.object(market_service.logger, "warning")
     @patch(
         "src.data.market.service.fetch_ccxt_series",

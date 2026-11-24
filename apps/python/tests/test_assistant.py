@@ -8,9 +8,13 @@ from src.components.assistant import (
     _smart_context_search,
 )
 from src.data.dashboard_query import load_dashboard_snapshot
+from src.data.market import service as market_service
 
 
 class AssistantUnitTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     def test_normalize_history_filters_invalid_messages(self):
         messages = [
             {"role": "user", "content": " hello "},
