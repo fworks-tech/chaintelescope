@@ -32,6 +32,7 @@ export function buildData(stack: Stack, network: NetworkOutput): DataOutput {
     databaseName: DB_NAME,
     allocatedStorage: 20,
     storageType: rds.StorageType.GP3,
+    storageEncrypted: true,
     multiAz: false,
     backupRetention: Duration.days(1),
     deletionProtection: false,

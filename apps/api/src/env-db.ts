@@ -33,6 +33,27 @@ export function resolveDatabaseUrl(input: {
   );
 }
 
+/**
+ * SSL for Postgres wire encryption. RDS enforces it (`no pg_hba.conf entry
+ * ... no encryption` otherwise); local dev Postgres does not. Enable unless
+ * the host is loopback. `rejectUnauthorized: false` because the image ships
+ * no AWS CA bundle (dev baseline; pin the RDS CA for production).
+ */
+export function resolvePgSsl(
+  connectionString: string,
+): { rejectUnauthorized: false } | undefined {
+  let hostname = "";
+  try {
+    hostname = new URL(connectionString).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+  if (hostname === "" || hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return undefined;
+  }
+  return { rejectUnauthorized: false };
+}
+
 const dbSchema = Joi.object({
   DATABASE_URL: Joi.string().uri({ scheme: ["postgres", "postgresql"] }),
   PGHOST: Joi.string().hostname(),

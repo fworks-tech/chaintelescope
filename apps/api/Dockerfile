@@ -8,6 +8,10 @@ FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 RUN npm install -g pnpm@12.6.0
 
+# argon2 compiles its native binding at install time (node-gyp); the slim
+# builder needs the toolchain for it. Runtime stays distroless.
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists
+
 # Copia manifests de workspaces
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* tsconfig.base.json ./
 COPY packages/shared/package.json ./packages/shared/

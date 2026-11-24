@@ -5,11 +5,12 @@
  */
 
 import pg from "pg";
-import { loadDatabaseUrl } from "../env-db.js";
+import { loadDatabaseUrl, resolvePgSsl } from "../env-db.js";
 import { migrate } from "./migrate.js";
 
 const direction = process.argv.includes("--down") ? "down" : "up";
-const pool = new pg.Pool({ connectionString: loadDatabaseUrl(), max: 2 });
+const connectionString = loadDatabaseUrl();
+const pool = new pg.Pool({ connectionString, ssl: resolvePgSsl(connectionString), max: 2 });
 
 try {
   const result = await migrate(pool, direction);
