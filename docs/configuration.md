@@ -28,7 +28,7 @@ When credentials are missing or provider calls fail, the assistant returns a loc
 | `MARKET_PROVIDER`                | No       | `auto`  | `auto`, `binance`, `coingecko`, `coinbase`, or `mock` (sidebar Source filter overrides this per session)                                   |
 | `MARKET_REQUEST_TIMEOUT_SECONDS` | No       | `10`    | Per-provider timeout for Python and Node market requests; Node chain returns 503 with `Retry-After` when all providers fail or are invalid |
 
-`auto` tries Binance, then CoinGecko, then Coinbase, then mock series from `apps/python/src/data/mock_market.py`. Exchange endpoints are managed internally by `ccxt`.
+`auto` tries Binance, then CoinGecko, then Coinbase, then mock series from `apps/python/src/data/mock_market.py`. Exchange access goes through `ccxt` when it is installed; otherwise the built-in `httpx` fallback serves the same providers (slim/serverless installs have no `ccxt`).
 
 ## News feeds
 

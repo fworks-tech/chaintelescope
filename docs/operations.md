@@ -39,7 +39,7 @@ curl -s -o /dev/null -w "%{http_code}" https://cointelegraph.com/rss
 | Streamlit UI | HTTP 200 on :8501 | Every 30s (Docker healthcheck) |
 | News feeds | RSS resolves | Daily |
 | Market APIs | Price chart shows real data | Daily |
-| Newsletter storage | `data/newsletter_subscriptions.json` writable | Weekly |
+| Newsletter storage | `$NEWSLETTER_DATA_DIR/newsletter_subscriptions.json` (default `data/` relative to the process working directory) writable | Weekly |
 | Disk space | `df -h` < 80% | Weekly |
 
 ## Monitoring
@@ -71,10 +71,6 @@ For production, add a free uptime monitor:
 - [UptimeRobot](https://uptimerobot.com/) — free tier checks every 5 minutes
 - [Better Uptime](https://betteruptime.com/) — free tier with status page
 - Point to `https://chain-telescope.example.com`
-
-### Error tracking
-
-If `SENTRY_DSN` is configured, errors in the Streamlit app and background workers are automatically reported to Sentry.
 
 ## Backups
 

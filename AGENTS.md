@@ -29,7 +29,7 @@ Python (run from `apps/python/`):
 1. `ruff check app.py src pages tests`
 2. `ruff format --check app.py src pages tests`
 3. `python -m py_compile app.py` + `python -c "import importlib; importlib.import_module('app')"`
-4. `python -m unittest discover -s tests -p 'test_*.py' -v` (74 tests, ~60 s)
+4. `python -m unittest discover -s tests -p 'test_*.py' -v` (94 tests, ~60 s)
 
 Node:
 

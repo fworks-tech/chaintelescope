@@ -2,7 +2,7 @@
 
 ## Problem
 
-`feedparser 6.x` requires the `sgmllib` module, which was removed from the Python standard library in Python 3.13 and is absent in Python 3.11+ environments. The import fails silently — the app falls back to 3 hardcoded mock items.
+`feedparser 6.x` requires the `sgmllib` module, which was deprecated since Python 3.11 and removed from the standard library in Python 3.13, so it is absent in modern environments. The import fails silently — the app falls back to 3 hardcoded mock items.
 
 ## Proposed Solution
 

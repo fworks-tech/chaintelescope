@@ -38,27 +38,27 @@ Opens at `http://localhost:8501`.
 
 ## Code quality gates
 
-Run these commands before committing in this order:
+Run these commands before committing, from `apps/python/` in this order:
 
 ```powershell
 # 1. Lint
-python -m ruff check app.py src tests
+python -m ruff check app.py src pages tests
 
 # 2. Format check
-python -m ruff format --check app.py src tests
+python -m ruff format --check app.py src pages tests
 
 # Auto-fix if needed
-python -m ruff check --fix app.py src tests
-python -m ruff format app.py src tests
+python -m ruff check --fix app.py src pages tests
+python -m ruff format app.py src pages tests
 
-# 3. Compile check
+# 3. Compile check (still inside `apps/python/`)
 python -m py_compile app.py
 Get-ChildItem -Path src, pages -Recurse -Filter *.py | ForEach-Object {
     python -m py_compile $_.FullName
 }
 
 # 4. Tests
-cd apps/python && python -m unittest discover -s tests -p 'test_*.py' -v
+python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
 ## Project structure
@@ -78,7 +78,7 @@ chain-telescope/
 │       │   │   └── __init__.py     # Cached snapshot wrapper
 │       │   ├── data/               # Data layer
 │       │   │   ├── dashboard_query.py
-│       │   │   ├── assets.py       # 100+ asset symbol mappings
+│       │   │   ├── assets.py       # 100 asset symbol mappings
 │       │   │   ├── market/         # Exchange adapters (binance, coingecko, coinbase)
 │       │   │   ├── news/           # RSS ingestion
 │       │   │   ├── alerts/         # Alert rules engine

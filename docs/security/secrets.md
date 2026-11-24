@@ -17,6 +17,8 @@ the tests are non-production fixtures and must never be reused.
 | `ARGON2_PEPPER` | **Yes, critical** | `auth/password.ts` (via `routes.ts`) | Mixed into every password before Argon2id; a stolen database alone is not enough to attack hashes offline | Requires a code change or a forced reset; see below |
 | `CORS_ORIGINS` | No (integrity-sensitive) | `server.ts` | Browser allowlist; a wrong value breaks or widens the client surface | Update, deploy; `*` is refused at boot |
 | `JWT_ACCESS_TTL` | No | `auth/session.ts`, `env.ts` | Access-token lifetime | Change and deploy; existing tokens keep their `exp` |
+| `MARKET_PROVIDER` | No | `env.ts` | Market venue selection (`auto`, `binance`, `coingecko`, `coinbase`, `mock`) | Change and deploy |
+| `MARKET_REQUEST_TIMEOUT_SECONDS` | No | `env.ts` | Per-provider market timeout (default 10 s) | Change and deploy |
 | `JWT_REFRESH_TTL_DAYS` | No | `auth/session.ts` | Lifetime of newly issued refresh tokens | Change and deploy; existing rows keep `expires_at` |
 | `NODE_ENV` | No | `server.ts`, logging, cookie `Secure` | Selects production behaviour (Secure cookie) | Platform setting |
 | `HOST`, `PORT` | No | `server.ts` | Listener bind | Platform setting |
