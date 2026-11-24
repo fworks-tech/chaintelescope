@@ -1,158 +1,195 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import type { JSX } from "react";
 import {
   Alert,
+  AlertTitle,
+  Button,
   Card,
   CardContent,
-  CircularProgress,
-  Stack,
-  Typography,
+  Skeleton,
 } from "@mui/material";
+import type { PriceTrend, TimeWindow } from "@chaintelescope/shared";
+import { ApiError, getPriceTrend, isTimeout } from "../api/client.js";
+import { priceFormat } from "../lib/format.ts";
 import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { PriceTrend } from "@chaintelescope/shared";
-import { ApiError, getPriceTrend } from "../api/client.js";
-import { theme } from "../theme.ts";
+  longDate,
+  shortDate,
+  summarizeTrend,
+  toPoints,
+  windowDays,
+} from "../lib/trend.ts";
+import PageHeader from "../components/PageHeader.tsx";
+import StatTile from "../components/StatTile.tsx";
+import WindowSummary from "../components/WindowSummary.tsx";
 
-interface TrendPoint {
-  readonly date: string;
-  readonly price: number;
-  readonly trend: number;
-}
+const TrendChart = lazy(() => import("../components/TrendChart.tsx"));
 
-function toPoints(data: PriceTrend): TrendPoint[] {
-  return data.prices.map((price, i) => ({
-    date: (data.dates[i] ?? "").slice(0, 10),
-    price,
-    trend: data.trend[i] ?? price,
-  }));
-}
+/** Single source for every "30-day" string on this screen. */
+const WINDOW: TimeWindow = "30D";
+const DAYS = windowDays(WINDOW);
 
-export default function Dashboard() {
-  const [trend, setTrend] = useState<PriceTrend | null>(null);
-  const [error, setError] = useState<string | null>(null);
+type TrendState =
+  | { readonly status: "loading" }
+  | { readonly status: "ready"; readonly data: PriceTrend }
+  | { readonly status: "error"; readonly message: string };
+
+export default function Dashboard(): JSX.Element {
+  const [state, setState] = useState<TrendState>({ status: "loading" });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
     let cancelled = false;
-    getPriceTrend()
+    getPriceTrend("BTC", WINDOW, controller.signal)
       .then((data) => {
-        if (!cancelled) setTrend(data);
+        if (!cancelled) setState({ status: "ready", data });
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(
-            err instanceof ApiError
-              ? `API ${err.status}: ${err.message}`
-              : "API unreachable",
-          );
+        if (cancelled) return;
+        // No status duplication: ApiError.message is the status text only.
+        if (err instanceof ApiError) {
+          setState({
+            status: "error",
+            message: `API error ${err.status} (${err.message})`,
+          });
+        } else if (isTimeout(err)) {
+          setState({ status: "error", message: "Request timed out" });
+        } else {
+          setState({ status: "error", message: "API unreachable" });
         }
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, []);
+  }, [attempt]);
 
-  const points = useMemo(
-    () => (trend ? toPoints(trend) : []),
-    [trend],
+  const retry = () => {
+    setState({ status: "loading" });
+    setAttempt((n) => n + 1);
+  };
+
+  if (state.status === "error") {
+    return <ErrorView message={state.message} onRetry={retry} />;
+  }
+  if (state.status === "loading") {
+    return <LoadingView />;
+  }
+  return <ReadyView data={state.data} />;
+}
+
+function ErrorView({
+  message,
+  onRetry,
+}: {
+  readonly message: string;
+  readonly onRetry: () => void;
+}): JSX.Element {
+  return (
+    <>
+      <PageHeader title="Market dashboard" />
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" size="small" onClick={onRetry}>
+            Try again
+          </Button>
+        }
+      >
+        <AlertTitle>Price trend unavailable</AlertTitle>
+        {message}
+      </Alert>
+    </>
   );
+}
 
-  if (error)
-    return <Alert severity="error">Price trend unavailable: {error}</Alert>;
-  if (!trend)
-    return (
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <CircularProgress size={20} />
-        <Typography>Loading price trend…</Typography>
-      </Stack>
-    );
+function LoadingView(): JSX.Element {
+  return (
+    <>
+      <PageHeader
+        title="Market dashboard"
+        caption="Loading the latest price trend…"
+      />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((key) => (
+          <Card key={key}>
+            <CardContent>
+              <Skeleton width="55%" height={14} />
+              <Skeleton width="75%" height={38} sx={{ mt: 1 }} />
+              <Skeleton width="40%" height={16} />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card sx={{ mt: 2 }}>
+        <CardContent>
+          <Skeleton width="30%" height={22} />
+          <Skeleton width="50%" height={14} sx={{ mt: 1 }} />
+          <Skeleton variant="rounded" height={300} sx={{ mt: 2 }} />
+        </CardContent>
+      </Card>
+    </>
+  );
+}
 
-  const first = trend.prices[0] ?? 0;
-  const last = trend.prices[trend.prices.length - 1] ?? 0;
-  const change = first === 0 ? 0 : ((last - first) / first) * 100;
-  const up = change >= 0;
+function ReadyView({ data }: { readonly data: PriceTrend }): JSX.Element {
+  const points = useMemo(() => toPoints(data), [data]);
+  const summary = useMemo(
+    () => summarizeTrend(data.prices, points),
+    [data, points],
+  );
+  const lastDateLabel = longDate(summary.lastDate) || "—";
 
   return (
-    <Stack spacing={2}>
-      <Card>
-        <CardContent>
-          <Typography variant="h5" component="h1">
-            {trend.asset} · {trend.source}
-          </Typography>
-          <Stack direction="row" spacing={4} sx={{ mt: 1 }}>
-            <span>
-              <Typography variant="caption" color="text.secondary">
-                Latest
-              </Typography>
-              <Typography variant="h6">{last.toFixed(2)}</Typography>
-            </span>
-            <span>
-              <Typography variant="caption" color="text.secondary">
-                30-day change
-              </Typography>
-              <Typography
-                variant="h6"
-                color={up ? "success.main" : "error.main"}
-              >
-                {up ? "+" : ""}
-                {change.toFixed(2)}%
-              </Typography>
-            </span>
-            <span>
-              <Typography variant="caption" color="text.secondary">
-                Points
-              </Typography>
-              <Typography variant="h6">{trend.prices.length}</Typography>
-            </span>
-          </Stack>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={320}>
-            <LineChart
-              data={points}
-              margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="date"
-                minTickGap={48}
-                tick={{ fontSize: 12, fill: "#475569" }}
-              />
-              <YAxis
-                domain={["auto", "auto"]}
-                tick={{ fontSize: 12, fill: "#475569" }}
-                tickFormatter={(v: number) => v.toLocaleString()}
-              />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="price"
-                dot={false}
-                strokeWidth={2}
-                stroke={theme.palette.primary.main}
-                name={`${trend.asset} price`}
-              />
-              <Line
-                type="monotone"
-                dataKey="trend"
-                dot={false}
-                strokeDasharray="5 5"
-                strokeWidth={1}
-                stroke="#94a3ff"
-                name="trend"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-    </Stack>
+    <>
+      <PageHeader
+        title="Market dashboard"
+        caption={`Tracking ${data.asset} over ${DAYS} days from ${data.source}. Last data point ${lastDateLabel}.`}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          label="Latest price"
+          value={priceFormat.format(summary.last)}
+          hint={`USD · ${shortDate(summary.lastDate)}`}
+        />
+        <StatTile
+          label={`${DAYS}-day change`}
+          value={`${summary.isUp ? "+" : ""}${summary.change.toFixed(2)}%`}
+          hint={`${summary.isUp ? "+" : ""}${priceFormat.format(summary.last - (data.prices[0] ?? 0))} since ${shortDate(points[0]?.date ?? "")}`}
+          tone={summary.isUp ? "up" : "down"}
+        />
+        <StatTile
+          label={`${DAYS}-day high`}
+          value={priceFormat.format(summary.high)}
+          hint={`on ${shortDate(summary.highDate)}`}
+        />
+        <StatTile
+          label={`${DAYS}-day low`}
+          value={priceFormat.format(summary.low)}
+          hint={`on ${shortDate(summary.lowDate)}`}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <Suspense
+          fallback={
+            <Card className="lg:col-span-2">
+              <CardContent>
+                <Skeleton variant="rounded" height={372} />
+              </CardContent>
+            </Card>
+          }
+        >
+          <TrendChart
+            points={points}
+            asset={data.asset}
+            source={data.source}
+            windowCaption={`${DAYS}-day window`}
+          />
+        </Suspense>
+        <WindowSummary summary={summary} window={WINDOW} source={data.source} />
+      </div>
+    </>
   );
 }

@@ -15,8 +15,9 @@ weeks.
 ## Decision
 
 - `@mui/material` (with Emotion) for components: AppBar, Card, Typography,
-  Alert, form controls. Theme in `apps/web/src/theme.ts` ported 1:1 from the
-  Streamlit `:root` tokens.
+  Alert, form controls. Theme in `apps/web/src/theme.ts` ported from the
+  Streamlit `:root` tokens — 1:1 except the documented AA deviations
+  (`text.secondary`, dark text shades, card hairline).
 - Tailwind v4 (`@tailwindcss/vite`) for layout utilities only, **without
   preflight**: `index.css` imports just `theme.css` + `utilities.css` layers.
   `CssBaseline` owns the reset — Tailwind preflight breaks MUI components.
@@ -36,8 +37,9 @@ weeks.
 
 **Positive:** every page shares theme, a11y, and feedback patterns from day
 one; Streamlit look carries over via tokens.
-**Negative:** bundle grows (MUI + Emotion + recharts); the >500 kB chunk
-warning needs a code-split follow-up.
+**Negative:** bundle grows (MUI + Emotion + recharts); recharts ships as a
+lazy `TrendChart` chunk, but the main chunk still trips the >500 kB warning
+via MUI — further route-level or import-tuning follow-up stands.
 **Neutral:** two styling engines coexist under the rule above.
 
 ## References
