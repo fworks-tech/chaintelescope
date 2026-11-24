@@ -3,6 +3,7 @@
 # streamlit, plotly exceed the 250 MB serverless limit and break `pip
 # install`, which used to surface as `ModuleNotFoundError: fastapi`).
 # The API hot path runs without pandas/ccxt via pure-python fallbacks.
+defusedxml==0.7.1
 fastapi>=0.111.0
 pydantic>=2.8.0
 httpx>=0.27.0
