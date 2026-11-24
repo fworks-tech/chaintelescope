@@ -20,6 +20,15 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+// Recorded venue payloads live in fixtures/market/; refresh them if a venue
+// changes its response shape, keeping all three on the same BTC 7-day window.
+// Fixture upkeep is manual (no scheduled refresh); the contract below fails
+// loudly on drift.
+// NOTE (auditor): fixture() takes hardcoded names only — no path traversal.
+const EXPECTED_BTC_7D_PRICES = [
+  42400.1, 42750.75, 42900, 43025.5, 43300.25, 43450, 43700.6,
+];
+
 /** Normalized Snapshot shape every venue must satisfy (#173). */
 function expectNormalizedSnapshot(
   snapshot: {
@@ -73,9 +82,7 @@ describe("BinanceMarketProvider", () => {
       provider: "binance",
       asset: "BTC",
     });
-    expect(snapshot.series[0]?.prices).toEqual([
-      42400.1, 42750.75, 42900, 43025.5, 43300.25, 43450, 43700.6,
-    ]);
+    expect(snapshot.series[0]?.prices).toEqual(EXPECTED_BTC_7D_PRICES);
     // Canonical map drives the venue symbol (#174).
     expect(seen).toHaveLength(1);
     expect(seen[0]).toContain("symbol=BTCUSDT");
@@ -128,9 +135,7 @@ describe("CoinGeckoMarketProvider", () => {
       provider: "coingecko",
       asset: "BTC",
     });
-    expect(snapshot.series[0]?.prices).toEqual([
-      42400.1, 42750.75, 42900, 43025.5, 43300.25, 43450, 43700.6,
-    ]);
+    expect(snapshot.series[0]?.prices).toEqual(EXPECTED_BTC_7D_PRICES);
     expect(seen[0]).toContain("/bitcoin/market_chart");
     expect(seen[0]).toContain("vs_currency=usd");
   });
@@ -180,9 +185,7 @@ describe("CoinbaseMarketProvider", () => {
     });
     // Fixture is newest-first; provider sorts ascending and keeps all 7.
     expect(snapshot.series[0]?.dates[0]).toBe("2024-01-01T00:00:00.000Z");
-    expect(snapshot.series[0]?.prices).toEqual([
-      42400.1, 42750.75, 42900, 43025.5, 43300.25, 43450, 43700.6,
-    ]);
+    expect(snapshot.series[0]?.prices).toEqual(EXPECTED_BTC_7D_PRICES);
     expect(seen[0]).toContain("/BTC-USD/candles");
     expect(seen[0]).toContain("granularity=86400");
   });
