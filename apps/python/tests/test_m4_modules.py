@@ -5,12 +5,16 @@ from unittest.mock import patch
 
 from src.data.alerts.rules import evaluate_alert_rules
 from src.data.dashboard_query import load_dashboard_snapshot
+from src.data.market import service as market_service
 from src.data.market.service import fetch_price_trend
 from src.data.mock_market import ASSET_BASE_PRICES, price_trend_series
 from src.data.news.ingestion import load_news_items
 
 
 class DashboardQueryTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     def test_snapshot_filters_trending_by_watchlist(self):
         snapshot = load_dashboard_snapshot("30D", ["SOL", "ETH"])
         self.assertEqual(list(snapshot.trending["Asset"]), ["SOL", "ETH"])
@@ -38,6 +42,9 @@ class DashboardQueryTests(unittest.TestCase):
 
 
 class MarketServiceTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     @patch("src.data.market.service.fetch_ccxt_series", return_value=None)
     def test_fetch_price_trend_falls_back_to_mock(self, _mock_ccxt):
         _, _, _, source = fetch_price_trend("BTC", 30, "30D")

@@ -2,10 +2,14 @@ import unittest
 from datetime import datetime
 from unittest.mock import patch
 
+from src.data.market import service as market_service
 from src.views import cached_dashboard_snapshot
 
 
 class CachingTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     @patch("src.data.market.service.fetch_ccxt_series")
     @patch("src.data.news.ingestion._parse_feed", return_value=[])
     def test_snapshot_cached_returns_consistent_data(self, _mock_news, mock_fetch):

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from src.api import app
+from src.data.market import service as market_service
 
 client = TestClient(app)
 
@@ -16,6 +17,9 @@ class ApiHealthTests(unittest.TestCase):
 
 
 class ApiSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     @patch("src.data.market.service.fetch_ccxt_series", return_value=None)
     @patch("src.data.news.ingestion._parse_feed", return_value=[])
     def test_snapshot_returns_expected_structure(self, _mock_news, _mock_ccxt):
@@ -35,6 +39,9 @@ class ApiSnapshotTests(unittest.TestCase):
 
 
 class ApiPriceTrendTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     @patch("src.data.market.service.fetch_ccxt_series")
     def test_price_trend_returns_expected_structure(self, mock_ccxt):
         mock_ccxt.return_value = ([datetime(2024, 1, 1)], [100.0], "binance")
@@ -62,6 +69,9 @@ class ApiNewsTests(unittest.TestCase):
 
 
 class ApiAlertsTests(unittest.TestCase):
+    def setUp(self):
+        market_service._CACHE.clear()
+
     @patch("src.data.market.service.fetch_ccxt_series", return_value=None)
     def test_alerts_returns_structure(self, _mock_ccxt):
         resp = client.get("/api/alerts?window=30D&assets=BTC")
