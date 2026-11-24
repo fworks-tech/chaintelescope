@@ -8,13 +8,22 @@
   --bg: #eef2f8;
   --panel: #ffffff;
   --text: #0f172a;
-  --muted: #64748b;
+  /* Streamlit `--muted` is #64748b; darkened one step for AA on --bg. */
+  --muted: #566275;
   --accent: #3b5bff;
   --accent-soft: #94a3ff;
   --ok: #12b76a;
   --warn: #f79009;
   --bad: #f04438;
   --border: #d8dee9;
+  --card-shadow: 0 8px 24px rgba(16, 24, 40, 0.04);
+  --nav-hover: #e8edff;
+  color-scheme: light;
+}
+
+html {
+  /* Sticky app bar sits flush against the top edge; no scroll anchoring jumps. */
+  scroll-padding-top: 88px;
 }
 
 body {
@@ -25,4 +34,39 @@ body {
     var(--bg) 45%,
     #f7f9fc 100%
   );
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+::selection {
+  background: #cdd8ff;
+  color: var(--text);
+}
+
+/* Keyboard focus is visible everywhere, including inside MUI portals. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Thin, quiet scrollbars so long feeds don't look like a desktop window. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c3cddb transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Recharts renders its own text; keep it crisp against the gradient. */
+.recharts-cartesian-axis-tick-value {
+  font-variant-numeric: tabular-nums;
 }
