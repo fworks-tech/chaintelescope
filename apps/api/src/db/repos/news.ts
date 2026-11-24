@@ -3,7 +3,7 @@
  * @module api/db/repos/news
  */
 
-import type { Kysely } from "kysely";
+import { sql, type Kysely } from "kysely";
 import type { DB } from "../schema.js";
 import type { IngestResult } from "../types.js";
 
@@ -80,11 +80,13 @@ export class NewsRepo {
     if (filter.assets.length > 0) {
       // Tags são gravadas minúsculas (writer Python + ingest); o título
       // casa via ILIKE. Uma variante basta — sem fan-out 4n por ativo.
+      // O array vai em ARRAY[...] explícito: parâmetro JS puro chegava ao
+      // Postgres sem tipo inferível (22P02).
       query = query.where((eb) =>
         eb.or(
           filter.assets.flatMap((asset) => [
             eb("title", "ilike", `%${escapeLike(asset)}%`),
-            eb("tags", "@>", [normalizeTag(asset)]),
+            eb("tags", "@>", sql<string[]>`ARRAY[${normalizeTag(asset)}]`),
           ]),
         ),
       );
