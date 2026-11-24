@@ -84,14 +84,16 @@ class WriteNewsItemsTests(unittest.TestCase):
         args, _ = cur.execute.call_args
         params = args[1]
         self.assertEqual(
-            params[:3],
+            params[:5],
             (
                 "ETF flows rebound",
                 "https://example.com/etf-flows",
+                "https://www.coindesk.com/arc/outboundfeeds/rss/",
+                ["BTC", "ETF"],
                 datetime(2026, 10, 26, 12, 0, 0, tzinfo=UTC),
             ),
         )
-        payload = json.loads(params[4])
+        payload = json.loads(params[6])
         self.assertEqual(payload["title"], "ETF flows rebound")
 
 

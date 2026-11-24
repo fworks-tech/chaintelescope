@@ -18,8 +18,8 @@ from src.data.news.ingestion import load_news_items
 from src.data.news.models import FeedItem
 
 INSERT_SQL = """
-INSERT INTO news_items (title, url, published_at, content_hash, canonical_payload)
-VALUES (%s, %s, %s, %s, %s)
+INSERT INTO news_items (title, url, source, tags, published_at, content_hash, canonical_payload)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (content_hash) DO NOTHING
 RETURNING id
 """
@@ -80,6 +80,8 @@ def write_news_items(conn, items: list[FeedItem]) -> dict:
                 (
                     item.title,
                     item.url,
+                    item.source,
+                    item.tags,
                     item.published_at,
                     content_hash(canonical),
                     canonical,
