@@ -1,12 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import type {
   MarketProviderId,
   Snapshot,
   TimeWindow,
 } from "@chaintelescope/shared";
 import {
+  clearMarketCache,
   createMarketChain,
   fetchPriceTrend,
+  getMarketMetrics,
+  resetMarketMetrics,
   resolveMarketProviders,
 } from "../src/market/index.js";
 import type { MarketProvider } from "../src/market/provider.js";
@@ -42,6 +45,11 @@ function provider(
 }
 
 const logger = { warn: vi.fn() };
+
+beforeEach(() => {
+  clearMarketCache();
+  resetMarketMetrics();
+});
 
 describe("market chain (#138)", () => {
   it("returns first success and records provider metadata", async () => {
@@ -117,6 +125,7 @@ describe("market chain (#138)", () => {
     ];
 
     for (const c of cases) {
+      clearMarketCache();
       const chain = createMarketChain(
         c.providers,
         { warn: vi.fn() },
@@ -360,6 +369,7 @@ describe("fetchPriceTrend service parity (#138)", () => {
     ];
 
     for (const c of cases) {
+      clearMarketCache();
       const result = await fetchPriceTrend(
         "BTC",
         30,
@@ -608,6 +618,7 @@ describe("market chain snapshot validation (#138 hardening)", () => {
       },
     ];
     for (const candidate of bad) {
+      clearMarketCache();
       const chain = createMarketChain(
         [
           provider("binance", async () => candidate),
@@ -620,5 +631,57 @@ describe("market chain snapshot validation (#138 hardening)", () => {
         chain(["BTC"], "30D", new AbortController().signal),
       ).resolves.toMatchObject({ provider: "coingecko" });
     }
+  });
+});
+
+describe("market cache and metrics (#172)", () => {
+  it("caches successful snapshots; a hit skips every provider", async () => {
+    const binance = provider("binance", async () => snapshot("binance"));
+    const chain = createMarketChain([binance], logger, { timeoutMs: 50 });
+    const signal = new AbortController().signal;
+    const first = await chain(SYMBOLS, WINDOW, signal);
+    const second = await chain(SYMBOLS, WINDOW, signal);
+    expect(second).toEqual(first);
+    expect(binance.fetchSnapshot).toHaveBeenCalledTimes(1);
+    expect(getMarketMetrics()["binance"]?.cacheHits).toBe(1);
+  });
+
+  it("never caches failures; the next call retries", async () => {
+    let calls = 0;
+    const flaky = provider("binance", async () => {
+      calls += 1;
+      if (calls === 1) throw new Error("down");
+      return snapshot("binance");
+    });
+    const chain = createMarketChain(
+      [flaky, provider("coingecko", async () => snapshot("coingecko"))],
+      { warn: vi.fn() },
+      { timeoutMs: 50 },
+    );
+    const signal = new AbortController().signal;
+    await chain(SYMBOLS, WINDOW, signal);
+    clearMarketCache();
+    await chain(SYMBOLS, WINDOW, signal);
+    expect(calls).toBe(2);
+  });
+
+  it("records per-provider latency and error counters", async () => {
+    const chain = createMarketChain(
+      [
+        provider("binance", async () => {
+          throw new Error("down");
+        }),
+        provider("coingecko", async () => snapshot("coingecko")),
+      ],
+      { warn: vi.fn() },
+      { timeoutMs: 50 },
+    );
+    await chain(SYMBOLS, WINDOW, new AbortController().signal);
+    const metrics = getMarketMetrics();
+    expect(metrics["binance"]?.calls).toBe(1);
+    expect(metrics["binance"]?.errors).toBe(1);
+    expect(metrics["coingecko"]?.calls).toBe(1);
+    expect(metrics["coingecko"]?.errors ?? 0).toBe(0);
+    expect(metrics["coingecko"]?.totalLatencyMs).toBeGreaterThanOrEqual(0);
   });
 });
