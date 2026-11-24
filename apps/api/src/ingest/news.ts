@@ -7,6 +7,7 @@ import { canonicalize, type JsonValue } from "@chaintelescope/shared";
 import type { NewsRepo } from "../db/repos/news.js";
 import type { IngestResult } from "../db/types.js";
 import { digest } from "../hashing/core.js";
+import { ValidationError } from "../errors/index.js";
 
 /**
  * Payload bruto de um item de notícia recebido de fontes externas (feeds RSS/Atom).
@@ -20,6 +21,10 @@ export interface RawNewsItem {
   readonly url: string;
   /** Data e hora de publicação oficial em formato ISO-8601. */
   readonly publishedAt: string;
+  /** Fonte (domínio do feed); vazia quando o coletor não informa. */
+  readonly source?: string | undefined;
+  /** Tags do coletor (ativos, categorias); vazias quando ausentes. */
+  readonly tags?: readonly string[] | undefined;
   /**
    * Timestamp de quando o item foi lido do socket de rede.
    * Campo volátil: excluído explicitamente do hash canônico para preservar a identidade do dado.
@@ -48,6 +53,12 @@ export async function ingestNewsItem(
   item: RawNewsItem,
   repo: NewsRepo,
 ): Promise<IngestResult> {
+  // URLs executáveis nunca entram no banco: vêm de feeds não confiáveis e
+  // qualquer cliente futuro as renderizaria (stored XSS na web de hoje).
+  if (!/^https?:\/\//.test(item.url)) {
+    throw new ValidationError("Non-http(s) article URL");
+  }
+
   // Constrói o pre-image canônico estritamente com campos imutáveis de negócio
   const canonicalPayload: JsonValue = {
     publishedAt: item.publishedAt,
@@ -61,6 +72,9 @@ export async function ingestNewsItem(
   return repo.insertIfAbsent({
     title: item.title,
     url: item.url,
+    source: item.source ?? "",
+    // Tags gravadas minúsculas: a leitura compara exato (case único canônico).
+    tags: (item.tags ?? []).map((tag) => tag.toLowerCase()),
     publishedAt: item.publishedAt,
     contentHash,
     canonicalPayload: canonicalBytes.toString("utf8"),

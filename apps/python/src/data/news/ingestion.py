@@ -5,12 +5,17 @@ import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 
 import httpx
+from defusedxml.ElementTree import fromstring as safe_fromstring
 from dotenv import load_dotenv
 from loguru import logger
 from src.data.mock_market import news_snapshot
 from src.data.news.models import FeedItem
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
+
+# Feeds are ~100 KB; anything 50x that is abuse, not news (the 512 MiB
+# Fargate task parses before the 20-item cap applies).
+MAX_FEED_BYTES = 5_000_000
 
 load_dotenv()
 
@@ -113,7 +118,10 @@ def _parse_rss_entry(entry: ET.Element, source: str) -> FeedItem | None:
 def _parse_feed(url: str) -> list[FeedItem]:
     resp = httpx.get(url, timeout=10, follow_redirects=True)
     resp.raise_for_status()
-    root = ET.fromstring(resp.content)
+    if len(resp.content) > MAX_FEED_BYTES:
+        raise ValueError(f"feed exceeds {MAX_FEED_BYTES} bytes: {url}")
+    # defusedxml: feeds are untrusted XML, entity expansion is a DoS vector.
+    root = safe_fromstring(resp.content)
 
     is_atom = root.tag == f"{{{ATOM_NS}}}feed"
 

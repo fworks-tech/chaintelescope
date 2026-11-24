@@ -1,6 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import { buildApi } from "../lib/api.js";
 import { buildData } from "../lib/data.js";
+import { buildNewsJob } from "../lib/jobs.js";
 import { buildNetwork } from "../lib/network.js";
 import { buildObservability } from "../lib/observability.js";
 
@@ -19,4 +20,5 @@ const data = buildData(stack, network);
 const api = buildApi(stack, network, data, {
   webOrigin: process.env["WEB_ORIGIN"] ?? "https://example.com",
 });
-buildObservability(stack, api, data);
+const jobs = buildNewsJob(stack, network, data, api.cluster);
+buildObservability(stack, api, data, jobs);

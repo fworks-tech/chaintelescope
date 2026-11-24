@@ -27,6 +27,8 @@ export interface NewsItemsTable {
   content_hash: string;
   title: string;
   url: string;
+  source: string;
+  tags: string[];
   published_at: Timestamp;
   canonical_payload: string;
   first_seen_at: Generated<Date>;

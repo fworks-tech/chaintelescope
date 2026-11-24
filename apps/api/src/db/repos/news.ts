@@ -11,6 +11,8 @@ import type { IngestResult } from "../types.js";
 export interface NewNewsItem {
   readonly title: string;
   readonly url: string;
+  readonly source: string;
+  readonly tags: readonly string[];
   readonly publishedAt: string;
   readonly contentHash: string;
   readonly canonicalPayload: string;
@@ -31,6 +33,8 @@ export class NewsRepo {
       .values({
         title: item.title,
         url: item.url,
+        source: item.source,
+        tags: [...item.tags],
         published_at: item.publishedAt,
         content_hash: item.contentHash,
         canonical_payload: item.canonicalPayload,

@@ -11,10 +11,13 @@ SNS-paged CloudWatch alarms. Synth-only in CI; deploys are manual.
   isolated subnets for RDS
 - `lib/data.ts` — Postgres 16, `db.t4g.micro`, 20 GB gp3, single-AZ, generated
   secret, 1-day backups
-- `lib/api.ts` — in-stack ECR repo + `ApplicationLoadBalancedFargateService`
+- `lib/api.ts` — out-of-stack ECR repo + `ApplicationLoadBalancedFargateService`
   (0.5 vCPU / 1 GB, 1 task, `/healthz` checks), PG\* secrets wiring
-- `lib/observability.ts` — 7 alarms (ALB 5xx, target 5xx, ECS CPU/mem, RDS
-  CPU/connections/free storage) → one SNS topic
+- `lib/jobs.ts` — scheduled Python news ingest: EventBridge hourly rule →
+  run-to-complete Fargate task (0.25 vCPU / 0.5 GB), out-of-stack ECR repo
+  `chaintelescope/news-job`, own log group + SG (RDS opens 5432 to it)
+- `lib/observability.ts` — 9 alarms (ALB 5xx, target 5xx, ECS CPU/mem, RDS
+  CPU/connections/free storage, news-job failed launch + writer crash) → one SNS topic
 - `test/stack.test.ts` — synth assertions (no credentials needed)
 
 ## Gates
@@ -45,6 +48,17 @@ pnpm --filter @chaintelescope/infra exec cdk synth --strict
    to exist before its first deploy, which an in-stack repo cannot provide.
    Builder note: the Dockerfile installs `python3/make/g++` for the argon2
    native build — the slim base image has no toolchain.)
+3b. Same hand-push for the news job image (`apps/python/Dockerfile`,
+   `python -m src.data.news.writer`, runs as non-root `job`):
+   `aws ecr create-repository --repository-name chaintelescope/news-job`
+   `docker build -f apps/python/Dockerfile -t <uri>:latest .`
+   `docker push <uri>:latest`
+   (Verify the schedule after deploy: `aws events list-rules
+   --query 'Rules[?contains(Name,\`NewsJobSchedule\`)]'` and tail
+   `/aws/ecs/news-job` in CloudWatch Logs after the hour.)
+   The rule has no retry/DLQ by design (hourly cadence, idempotent rerun):
+   redrive a failed run by hand with `aws ecs run-task` using the same task
+   definition and subnets (see step 6 for the network flags).
 4. `WEB_ORIGIN=https://<vercel-web-url> cdk deploy --strict` (diff first)
 5. Subscribe to alarms: `aws sns subscribe --topic-arn <Alarms ARN>
    --protocol email --notification-endpoint you@example.com`
@@ -78,7 +92,8 @@ has no failover — that is the accepted dev trade-off.
 ## Well-Architected notes
 
 - **Reliability:** health-checked target group, single AZ by default (documented
-  above); alarms on 5xx/CPU/memory/connections/storage page SNS.
+  above); alarms on 5xx/CPU/memory/connections/storage/news-job-failures page
+  SNS; idempotent ingest (`ON CONFLICT DO NOTHING`) makes reruns safe.
 - **Security:** RDS secret generated, app secrets by reference (never in the
   template), no `DATABASE_URL` string assembled at synth time, isolated DB
   subnets, least-privilege SG (Fargate → 5432 only).
