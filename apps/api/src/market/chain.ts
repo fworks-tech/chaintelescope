@@ -136,6 +136,10 @@ export const createMarketChain = (
   logger: ChainLogger,
   options: MarketChainOptions,
 ) => {
+  // Partial-failure semantics (#177): a provider either serves the whole
+  // requested symbol set or fails it; one bad asset fails that provider's
+  // snapshot and the chain falls through to the next provider. No partial
+  // snapshots with per-asset errors are returned.
   return async (
     symbols: readonly string[],
     window: TimeWindow,
