@@ -5,7 +5,7 @@ import { createTheme } from "@mui/material/styles";
  * `apps/python/src/styles.py` (`GLOBAL_STYLE` `:root` block).
  * Single light theme — dark mode is out of scope (see #135).
  *
- * Three deliberate deviations from the Streamlit CSS, both accessibility-driven:
+ * Three deliberate deviations from the Streamlit CSS, all accessibility-driven:
  * 1. `success`/`error` keep their bright hues for charts and fills, but text
  *    that carries meaning uses the `dark` shade (`#067647` / `#b42318`), since
  *    `#12b76a` on white is 2.4:1 and fails WCAG AA for body-size text.
