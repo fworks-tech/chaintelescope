@@ -46,6 +46,8 @@ function provider(
 
 const logger = { warn: vi.fn() };
 
+// The chain cache/metrics are module-level: every test starts isolated,
+// and matrix loops clear again per iteration (same provider ids, new fakes).
 beforeEach(() => {
   clearMarketCache();
   resetMarketMetrics();
@@ -663,6 +665,25 @@ describe("market cache and metrics (#172)", () => {
     clearMarketCache();
     await chain(SYMBOLS, WINDOW, signal);
     expect(calls).toBe(2);
+  });
+
+  it("keys the cache by symbol set; a different set fetches again", async () => {
+    const binance = provider("binance", async (symbols) => ({
+      series: symbols.map((asset) => ({
+        asset,
+        dates: ["2026-01-01T00:00:00.000Z"],
+        prices: [1],
+        trend: [1],
+        source: "binance" as const,
+      })),
+      window: "30D" as TimeWindow,
+      provider: "binance" as const,
+    }));
+    const chain = createMarketChain([binance], logger, { timeoutMs: 50 });
+    const signal = new AbortController().signal;
+    await chain(["BTC"], "30D", signal);
+    await chain(["BTC", "ETH"], "30D", signal);
+    expect(binance.fetchSnapshot).toHaveBeenCalledTimes(2);
   });
 
   it("records per-provider latency and error counters", async () => {

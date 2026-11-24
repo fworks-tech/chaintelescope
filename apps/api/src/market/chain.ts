@@ -139,6 +139,9 @@ export interface ProviderMetrics {
 }
 
 const CACHE_TTL_MS = 60_000;
+// The key includes request symbols, so cardinality is caller-driven: bound
+// the per-process cache and evict oldest-first when full (#172, auditor).
+const MAX_CACHE_ENTRIES = 500;
 const snapshotCache = new Map<string, { expires: number; snapshot: Snapshot }>();
 const providerMetrics = new Map<string, ProviderMetrics>();
 
@@ -163,6 +166,8 @@ function recordCall(id: string, latencyMs: number, failed: boolean): void {
   providerMetrics.set(id, m);
 }
 
+// Per-provider latency/error counters (#172). Read by ops tooling; wire to
+// the /metrics endpoint under #124 — currently tests are the only reader.
 export function getMarketMetrics(): Record<string, ProviderMetrics> {
   return Object.fromEntries(providerMetrics);
 }
@@ -173,6 +178,42 @@ export function resetMarketMetrics(): void {
 
 export function clearMarketCache(): void {
   snapshotCache.clear();
+}
+
+function lookupCachedSnapshot(key: string): Snapshot | undefined {
+  const hit = snapshotCache.get(key);
+  if (!hit) return undefined;
+  if (hit.expires <= Date.now()) {
+    snapshotCache.delete(key); // expired entries must not linger
+    return undefined;
+  }
+  return hit.snapshot;
+}
+
+function recordCacheHit(providerId: MarketProvider["id"]): void {
+  const m = providerMetrics.get(providerId) ?? {
+    calls: 0,
+    errors: 0,
+    totalLatencyMs: 0,
+    cacheHits: 0,
+  };
+  m.cacheHits += 1;
+  providerMetrics.set(providerId, m);
+}
+
+function storeSnapshot(key: string, snapshot: Snapshot): void {
+  // Cache successful snapshots only; failures never populate (#172).
+  // Served results may be up to CACHE_TTL_MS stale. Per-process only —
+  // a shared cache is a separate chore. Mock snapshots are never cached.
+  if (snapshot.provider === "mock") return;
+  if (!snapshotCache.has(key) && snapshotCache.size >= MAX_CACHE_ENTRIES) {
+    const oldest = snapshotCache.keys().next();
+    if (!oldest.done) snapshotCache.delete(oldest.value);
+  }
+  snapshotCache.set(key, {
+    expires: Date.now() + CACHE_TTL_MS,
+    snapshot,
+  });
 }
 
 export const createMarketChain = (
@@ -191,14 +232,10 @@ export const createMarketChain = (
   ): Promise<Snapshot> => {
     if (signal.aborted) throw signal.reason;
     const key = cacheKey(providers, symbols, window);
-    const hit = snapshotCache.get(key);
-    if (hit && hit.expires > Date.now() && !signal.aborted) {
-      const m =
-        providerMetrics.get(hit.snapshot.provider) ??
-        { calls: 0, errors: 0, totalLatencyMs: 0, cacheHits: 0 };
-      m.cacheHits += 1;
-      providerMetrics.set(hit.snapshot.provider, m);
-      return hit.snapshot;
+    const cached = lookupCachedSnapshot(key);
+    if (cached && !signal.aborted) {
+      recordCacheHit(cached.provider);
+      return cached;
     }
     for (const provider of providers) {
       const scoped = withTimeout(signal, options.timeoutMs);
@@ -212,13 +249,7 @@ export const createMarketChain = (
         assertValidSnapshot(snapshot, symbols, window, provider.id);
         const finalSnapshot = { ...snapshot, provider: provider.id };
         recordCall(provider.id, Date.now() - start, false);
-        // Cache successful snapshots only; failures never populate (#172).
-        if (finalSnapshot.provider !== "mock") {
-          snapshotCache.set(key, {
-            expires: Date.now() + CACHE_TTL_MS,
-            snapshot: finalSnapshot,
-          });
-        }
+        storeSnapshot(key, finalSnapshot);
         return finalSnapshot;
       } catch (error) {
         recordCall(provider.id, Date.now() - start, true);
