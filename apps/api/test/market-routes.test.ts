@@ -59,6 +59,14 @@ describe("market routes", () => {
     expect((res.result as { source: string }).source).toBe("mock");
   });
 
+  it("window wins over days at the route layer", async () => {
+    const res = await server.inject(
+      "/api/price-trend?asset=BTC&window=7D&days=365",
+    );
+    expect(res.statusCode).toBe(200);
+    expect(((res.result as { prices: unknown[] }).prices)).toHaveLength(7);
+  });
+
   it("rejects unsafe asset symbols", async () => {
     const res = await server.inject(
       "/api/price-trend?asset=../BTC&source=mock",

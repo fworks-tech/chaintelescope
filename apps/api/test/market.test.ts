@@ -454,6 +454,32 @@ describe("fetchPriceTrend service parity (#138)", () => {
     expect(result.trend.every(Number.isFinite)).toBe(true);
   });
 
+  it("window sizes the series; days is legacy query compat", async () => {
+    const clock = new Date("2026-01-30T12:00:00.000Z");
+    const seven = await fetchPriceTrend(
+      "BTC",
+      999,
+      "7D",
+      "mock",
+      [],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { now: () => clock },
+    );
+    expect(seven.prices).toHaveLength(7);
+    const thirty = await fetchPriceTrend(
+      "BTC",
+      1,
+      "30D",
+      "mock",
+      [],
+      { warn: vi.fn() },
+      new AbortController().signal,
+      { now: () => clock },
+    );
+    expect(thirty.prices).toHaveLength(30);
+  });
+
   it("falls through when provider returns series for a different asset", async () => {
     const wrongAsset = provider("binance", async () => ({
       series: [
