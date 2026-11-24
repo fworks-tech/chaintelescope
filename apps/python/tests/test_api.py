@@ -95,12 +95,10 @@ class ApiNewsletterSubscribeTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 422)
 
 
-class ApiNewsletterSubscriptionsTests(unittest.TestCase):
-    @patch("src.data.newsletter.store.list_subscriptions", return_value=[])
-    def test_subscriptions_returns_list(self, _mock_list):
+class ApiNewsletterPrivacyTests(unittest.TestCase):
+    def test_subscriber_list_is_not_exposed(self):
         resp = client.get("/api/newsletter/subscriptions")
-        self.assertEqual(resp.status_code, 200)
-        self.assertIsInstance(resp.json(), list)
+        self.assertEqual(resp.status_code, 404)
 
 
 if __name__ == "__main__":
