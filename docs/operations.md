@@ -78,7 +78,7 @@ For production, add a free uptime monitor:
 
 | Path | Contents | Backup strategy |
 |------|----------|----------------|
-| `data/newsletter_subscriptions.json` | User subscriptions | Daily via cron |
+| `$NEWSLETTER_DATA_DIR/newsletter_subscriptions.json` (default `data/` under the process working directory) | User subscriptions | Daily via cron |
 | `apps/python/.streamlit/secrets.toml` | Secrets (if using file-based) | Manual, encrypted |
 | `.env` | Environment variables | Manual, encrypted |
 
@@ -89,7 +89,8 @@ For production, add a free uptime monitor:
 #!/bin/bash
 BACKUP_DIR=/var/backups/chain-telescope
 mkdir -p $BACKUP_DIR
-cp /opt/chain-telescope/data/newsletter_subscriptions.json $BACKUP_DIR/subscriptions-$(date +%Y%m%d).json
+SRC_DIR=${NEWSLETTER_DATA_DIR:-/opt/chain-telescope/apps/python/data}
+cp $SRC_DIR/newsletter_subscriptions.json $BACKUP_DIR/subscriptions-$(date +%Y%m%d).json
 find $BACKUP_DIR -name "subscriptions-*.json" -mtime +30 -delete
 ```
 
@@ -144,9 +145,9 @@ Symptom: Price chart shows mock data, news shows fallback headlines
    ```bash
    docker exec chain-telescope-streamlit env | grep NEWSLETTER
    ```
-2. Check subscription storage:
+2. Check subscription storage (same env-relative path the app writes):
    ```bash
-   cat data/newsletter_subscriptions.json
+   cat ${NEWSLETTER_DATA_DIR:-data}/newsletter_subscriptions.json
    ```
 3. Trigger dry run:
    ```bash

@@ -18,8 +18,8 @@ Adopt **Hapi.js (`@hapi/hapi`)** paired with `@hapi/joi` and `@hapi/boom`:
 
 ## Consequences & Trade-offs
 
-- **Pros:** Zero monkey-patching of `req`/`res` objects; native validation fails fast with 400 Bad Request before hitting business logic; superior enterprise plugin encapsulation.
-  > Note (2026-11-24): this repo maps Joi schema failures to `422 semantic_validation` (`apps/api/src/plugins/validation.ts`); plain `400` only comes from Hapi's parser on unparseable JSON.
+- **Pros:** Zero monkey-patching of `req`/`res` objects; Hapi's native fail-fast validation (400 by default, overridden to `422 semantic_validation` in this repo — see note) runs before business logic; superior enterprise plugin encapsulation.
+  > Note (2026-11-24): the override lives in `apps/api/src/plugins/validation.ts`; plain `400` only comes from Hapi's parser on unparseable JSON.
 - **Cons:** Steeper learning curve and smaller third-party ecosystem compared to Express middleware.
 
 ## Rejected Alternatives

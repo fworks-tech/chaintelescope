@@ -4,7 +4,7 @@
 
 ChainTelescope is a Streamlit app designed to run behind a reverse proxy on a VPS or container environment. This guide covers Docker deployment, environment configuration, domain setup, and CI/CD.
 
-## Quick start (Docker)
+## Quick start (local)
 
 ```bash
 # Build and start the Streamlit app locally (no compose file in this repo)
