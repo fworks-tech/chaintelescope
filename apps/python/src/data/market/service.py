@@ -116,25 +116,39 @@ def _mock_series(asset: str, days: int, time_window: str):
 
 
 def _normalize_dates(dates):
+    """Strict ISO dates mirroring the Node chain validation (#178).
+
+    Raises ValueError on the first invalid entry so the caller falls
+    through to the next provider (finally mock) instead of fabricating now.
+    """
     try:
         import pandas as pd
     except ImportError:
         pd = None  # type: ignore[assignment]
     normalized = []
     for value in dates:
+        if isinstance(value, datetime):
+            normalized.append(value)
+            continue
         try:
-            if isinstance(value, datetime):
-                normalized.append(value)
-            elif isinstance(value, (int, float)):
+            if isinstance(value, (int, float)):
                 if pd is None:
-                    normalized.append(datetime.fromtimestamp(value / 1000))
+                    parsed = datetime.fromtimestamp(value / 1000)
                 else:
-                    normalized.append(pd.to_datetime(value, unit="ms").to_pydatetime())
+                    parsed = pd.to_datetime(value, unit="ms").to_pydatetime()
             else:
                 if pd is None:
-                    normalized.append(datetime.fromisoformat(str(value)))
+                    parsed = datetime.fromisoformat(str(value))
                 else:
-                    normalized.append(pd.to_datetime(value).to_pydatetime())
-        except Exception:
-            normalized.append(datetime.now())
+                    parsed = pd.to_datetime(value).to_pydatetime()
+        except Exception as exc:
+            raise ValueError(f"invalid market date: {value!r}") from exc
+        if isinstance(parsed, datetime):
+            # pandas NaT passes isinstance(datetime) — reject it so both
+            # runtimes agree on invalid dates with or without pandas (#178).
+            if pd is not None and parsed is pd.NaT:
+                raise ValueError(f"invalid market date: {value!r}")
+            normalized.append(parsed)
+        else:
+            raise ValueError(f"invalid market date: {value!r}")
     return normalized
