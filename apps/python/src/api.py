@@ -67,7 +67,7 @@ def snapshot(
 @app.get("/api/price-trend")
 def price_trend(
     asset: str = Query("BTC"),
-    days: int = Query(30),
+    days: int = Query(30, description="legacy query compat; sizing follows window"),
     window: str = Query("30D"),
     source: str = Query("auto"),
 ):
