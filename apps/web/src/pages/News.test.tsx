@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NewsItem } from "@chaintelescope/shared";
 import News from "./News.tsx";
-import { formatPublished, hostOf } from "../lib/news.ts";
+import { formatPublished, hostOf, isHttpUrl } from "../lib/news.ts";
 import { ApiError } from "../api/client.js";
 
 vi.mock("../api/client.js", async (importOriginal) => ({
@@ -38,10 +38,6 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-afterEach(() => {
-  vi.clearAllMocks();
-});
-
 describe("News states", () => {
   it("shows skeleton rows while fetching", async () => {
     const getNews = await loadMock();
@@ -61,12 +57,33 @@ describe("News states", () => {
     await waitFor(() =>
       expect(screen.getByText("ETF flows rebound")).toBeInTheDocument(),
     );
+    expect(getNews).toHaveBeenCalledWith("BTC", 10, expect.anything());
     expect(screen.getByText("www.coindesk.com")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "ETF flows rebound" }),
     ).toHaveAttribute("href", "https://example.com/etf");
     expect(screen.getByText("not-a-url")).toBeInTheDocument();
     expect(screen.getByText("not-a-date")).toBeInTheDocument();
+  });
+
+  it("renders non-http URLs as plain text, never as links", async () => {
+    const getNews = await loadMock();
+    getNews.mockResolvedValueOnce([
+      {
+        id: "evil",
+        source: "evil",
+        publishedAt: "2026-10-26T12:00:00.000Z",
+        title: "Click me",
+        url: "javascript:alert(1)",
+        tags: [],
+      },
+    ]);
+    render(<News />);
+    await waitFor(() =>
+      expect(screen.getByText("Click me")).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(screen.getByText("javascript:alert(1)")).toBeInTheDocument();
   });
 
   it("shows the empty state when the table is empty", async () => {
@@ -95,7 +112,7 @@ describe("News states", () => {
     );
   });
 
-  it("shows unreachable and timeout distinctly", async () => {
+  it("shows the unreachable branch for offline throws", async () => {
     const getNews = await loadMock();
     getNews.mockRejectedValueOnce(new TypeError("fetch failed"));
     const { unmount } = render(<News />);
@@ -103,7 +120,10 @@ describe("News states", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("API unreachable"),
     );
     unmount();
+  });
 
+  it("shows a distinct message on client timeout", async () => {
+    const getNews = await loadMock();
     getNews.mockRejectedValueOnce(
       new DOMException("The operation timed out", "TimeoutError"),
     );
@@ -114,7 +134,7 @@ describe("News states", () => {
   });
 });
 
-describe("formatPublished / hostOf", () => {
+describe("formatPublished / hostOf / isHttpUrl", () => {
   it("formats UTC instants and passes garbage through", () => {
     expect(formatPublished("2026-10-26T12:00:00.000Z")).toBe(
       "Oct 26, 2026, 12:00 UTC",
@@ -123,5 +143,10 @@ describe("formatPublished / hostOf", () => {
     expect(hostOf("https://www.coindesk.com/rss")).toBe("www.coindesk.com");
     expect(hostOf("not-a-url")).toBe("not-a-url");
     expect(hostOf("")).toBe("");
+    expect(isHttpUrl("https://example.com/x")).toBe(true);
+    expect(isHttpUrl("http://example.com/x")).toBe(true);
+    expect(isHttpUrl("javascript:alert(1)")).toBe(false);
+    expect(isHttpUrl("data:text/html,<h1>x</h1>")).toBe(false);
+    expect(isHttpUrl("notaurl")).toBe(false);
   });
 });

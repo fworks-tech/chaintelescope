@@ -18,7 +18,7 @@ import {
 import type { NewsItem } from "@chaintelescope/shared";
 import { ApiError, getNews, isTimeout } from "../api/client.js";
 import PageHeader from "../components/PageHeader.tsx";
-import { formatPublished, hostOf } from "../lib/news.ts";
+import { formatPublished, hostOf, isHttpUrl } from "../lib/news.ts";
 
 /** Single source for the watchlist/limit on this screen. */
 const WATCHLIST = "BTC";
@@ -149,13 +149,17 @@ export default function News(): JSX.Element {
                       {formatPublished(item.publishedAt)}
                     </TableCell>
                     <TableCell>
-                      <Link
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {item.title}
-                      </Link>
+                      {isHttpUrl(item.url) ? (
+                        <Link
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {item.title}
+                        </Link>
+                      ) : (
+                        item.title
+                      )}
                     </TableCell>
                     <TableCell
                       sx={{
@@ -165,9 +169,13 @@ export default function News(): JSX.Element {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      <Link href={item.url} target="_blank" rel="noreferrer">
-                        {item.url}
-                      </Link>
+                      {isHttpUrl(item.url) ? (
+                        <Link href={item.url} target="_blank" rel="noreferrer">
+                          {item.url}
+                        </Link>
+                      ) : (
+                        item.url
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

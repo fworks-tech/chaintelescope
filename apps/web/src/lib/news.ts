@@ -24,3 +24,17 @@ export function hostOf(source: string): string {
     return source;
   }
 }
+
+/**
+ * Links are attacker-influenced (compromised/malicious RSS). React does not
+ * sanitize href schemes, so only http(s) URLs become links — anything else
+ * (javascript:, data:, unparseable) renders as plain text.
+ */
+export function isHttpUrl(url: string): boolean {
+  try {
+    const scheme = new URL(url).protocol;
+    return scheme === "http:" || scheme === "https:";
+  } catch {
+    return false;
+  }
+}
