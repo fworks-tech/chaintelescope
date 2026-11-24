@@ -21,9 +21,20 @@ def _timeout_seconds() -> float:
         return 10.0
 
 
+_CLIENT: httpx.Client | None = None
+
+
 def _get(url: str, params: dict, transport=None):
-    with httpx.Client(timeout=_timeout_seconds(), transport=transport) as client:
-        response = client.get(url, params=params, headers={"accept": "application/json"})
+    # One client per process: keeps connections alive across polls. Tests pass
+    # their own transport, which always gets a throwaway client instead.
+    if transport is not None:
+        with httpx.Client(timeout=_timeout_seconds(), transport=transport) as client:
+            response = client.get(url, params=params, headers={"accept": "application/json"})
+    else:
+        global _CLIENT
+        if _CLIENT is None:
+            _CLIENT = httpx.Client(timeout=_timeout_seconds())
+        response = _CLIENT.get(url, params=params, headers={"accept": "application/json"})
     if response.status_code != 200:
         raise ValueError(f"HTTP {response.status_code} for {url}")
     return response.json()
@@ -102,6 +113,7 @@ def _coinbase_series(asset: str, days: int, transport):
             continue
         candles.append((float(row[0]) * 1000, float(row[4])))
     candles.sort()
+    # Venue returns newest-first: keep the latest N in chronological order.
     candles = candles[-max(days, 1) :]
     if not candles:
         return None

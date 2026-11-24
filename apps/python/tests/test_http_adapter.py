@@ -43,6 +43,28 @@ def _rate_limited(request):
     return httpx.Response(429, json={"error": "slow down"})
 
 
+def _no_network(request):
+    raise AssertionError("no HTTP request expected for this case")
+
+
+def _binance_empty(request):
+    return httpx.Response(200, json=[])
+
+
+def _binance_short_rows(request):
+    return httpx.Response(
+        200,
+        json=[
+            [1715731200000, "64000.0"],
+            [1715817600000, "64200.0", "64800.0", "64100.0", "64600.0", "110.0"],
+        ],
+    )
+
+
+def _coingecko_empty(request):
+    return httpx.Response(200, json={"prices": []})
+
+
 class HttpAdapterTests(unittest.TestCase):
     def test_binance_parses_klines(self):
         dates, prices, source = fetch_http_series(
@@ -75,12 +97,28 @@ class HttpAdapterTests(unittest.TestCase):
         )
 
     def test_unknown_provider_returns_none(self):
-        self.assertIsNone(fetch_http_series("kraken", "BTC", 2))
+        self.assertIsNone(fetch_http_series("kraken", "BTC", 2, transport=_transport(_no_network)))
 
     def test_unknown_asset_returns_none(self):
         self.assertIsNone(
-            fetch_http_series("coingecko", "ZZZ", 2, transport=_transport(_coingecko_ok))
+            fetch_http_series("coingecko", "ZZZ", 2, transport=_transport(_no_network))
         )
+
+    def test_empty_payload_returns_none(self):
+        self.assertIsNone(
+            fetch_http_series("binance", "BTC", 2, transport=_transport(_binance_empty))
+        )
+        self.assertIsNone(
+            fetch_http_series("coingecko", "BTC", 2, transport=_transport(_coingecko_empty))
+        )
+
+    def test_short_rows_skipped(self):
+        dates, prices, source = fetch_http_series(
+            "binance", "BTC", 2, transport=_transport(_binance_short_rows)
+        )
+        self.assertEqual(source, "binance")
+        self.assertEqual(prices, [64600.0])
+        self.assertEqual(len(dates), 1)
 
 
 class SlimEnvServiceTests(unittest.TestCase):
@@ -104,6 +142,15 @@ class SlimEnvServiceTests(unittest.TestCase):
         market_service.fetch_price_trend("BTC", 7, "7D")
         market_service.fetch_price_trend("BTC", 7, "7D")
         self.assertEqual(mock_http.call_count, 1)
+
+    @patch("src.data.market.service._now", side_effect=[1000.0, 1070.0])
+    @patch("src.data.market.service._ccxt_available", return_value=False)
+    @patch("src.data.market.service.fetch_http_series")
+    def test_expired_entry_fetches_again(self, mock_http, _mock_no_ccxt, _mock_now):
+        mock_http.return_value = ([datetime(2024, 5, 14)], [100.0], "binance")
+        market_service.fetch_price_trend("BTC", 7, "7D")
+        market_service.fetch_price_trend("BTC", 7, "7D")
+        self.assertEqual(mock_http.call_count, 2)
 
 
 if __name__ == "__main__":
