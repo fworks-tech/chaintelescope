@@ -14,6 +14,7 @@ import { failAction, validationPlugin } from "./plugins/validation.js";
 import type { ScanRow } from "./db/schema.js";
 import { healthPlugin } from "./routes/health.js";
 import { marketPlugin, type MarketRouteOptions } from "./routes/market.js";
+import { newsPlugin } from "./routes/news.js";
 import { newsletterPlugin } from "./routes/newsletter.js";
 import { scansPlugin } from "./routes/scans.js";
 import { ScanCanceller } from "./scans/cancellation.js";
@@ -104,7 +105,7 @@ export async function buildServer(
     },
   });
 
-  await server.register([healthPlugin, scansPlugin, newsletterPlugin]);
+  await server.register([healthPlugin, scansPlugin, newsletterPlugin, newsPlugin]);
   await server.register({
     plugin: marketPlugin,
     options: {

@@ -3,7 +3,7 @@
  * @module api/db/repos/news
  */
 
-import type { Kysely } from "kysely";
+import { sql, type Kysely } from "kysely";
 import type { DB } from "../schema.js";
 import type { IngestResult } from "../types.js";
 
@@ -16,6 +16,26 @@ export interface NewNewsItem {
   readonly publishedAt: string;
   readonly contentHash: string;
   readonly canonicalPayload: string;
+}
+
+/** Filtros da leitura pública; espelham o `_filter_by_watchlist` do Python. */
+export interface NewsFilter {
+  /** Ativos em qualquer caixa; vazio significa sem filtro. */
+  readonly assets: readonly string[];
+  readonly limit: number;
+}
+
+/**
+ * Escapa curingas do LIKE (`%`, `_`, `\`): o valor é parametrizado pelo
+ * Kysely (sem injeção SQL), mas sem escape um `%` digitado vira curinga.
+ */
+export function escapeLike(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+/** Normaliza tags para comparação exata: escritores gravam minúsculas. */
+export function normalizeTag(tag: string): string {
+  return tag.toLowerCase();
 }
 
 export class NewsRepo {
@@ -44,5 +64,34 @@ export class NewsRepo {
       .executeTakeFirst();
 
     return row ? { created: row.id } : { deduped: true };
+  }
+
+  /**
+   * Últimas notícias filtradas por watchlist, mais recentes primeiro.
+   * Tabela vazia (job ainda não rodou) retorna `[]` — estado válido, não 404.
+   */
+  async list(filter: NewsFilter) {
+    let query = this.db
+      .selectFrom("news_items")
+      .select(["id", "source", "tags", "title", "url", "published_at"])
+      .orderBy("published_at", "desc")
+      .limit(filter.limit);
+
+    if (filter.assets.length > 0) {
+      // Tags são gravadas minúsculas (writer Python + ingest); o título
+      // casa via ILIKE. Uma variante basta — sem fan-out 4n por ativo.
+      // O array vai em ARRAY[...] explícito: parâmetro JS puro chegava ao
+      // Postgres sem tipo inferível (22P02).
+      query = query.where((eb) =>
+        eb.or(
+          filter.assets.flatMap((asset) => [
+            eb("title", "ilike", `%${escapeLike(asset)}%`),
+            eb("tags", "@>", sql<string[]>`ARRAY[${normalizeTag(asset)}]`),
+          ]),
+        ),
+      );
+    }
+
+    return query.execute();
   }
 }

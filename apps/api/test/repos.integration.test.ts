@@ -81,6 +81,89 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
     expect(second).toEqual({ deduped: true });
   });
 
+  test("news list filters by watchlist, orders by recency, honors limit", async () => {
+    await ingestNewsItem(
+      {
+        title: "ETF flows rebound",
+        url: "https://example.com/etf",
+        source: "https://www.coindesk.com/rss",
+        tags: ["BTC"],
+        publishedAt: "2026-10-26T12:00:00.000Z",
+      },
+      news,
+    );
+    await ingestNewsItem(
+      {
+        title: "Layer-1 activity rotates",
+        url: "https://example.com/l1",
+        source: "https://cointelegraph.com/rss",
+        tags: ["SOL"],
+        publishedAt: "2026-10-27T12:00:00.000Z",
+      },
+      news,
+    );
+    await ingestNewsItem(
+      {
+        title: "Local weather",
+        url: "https://example.com/weather",
+        source: "https://example.com/rss",
+        tags: [],
+        publishedAt: "2026-10-28T12:00:00.000Z",
+      },
+      news,
+    );
+
+    const all = await news.list({ assets: [], limit: 10 });
+    expect(all.map((row) => row.title)).toEqual([
+      "Local weather",
+      "Layer-1 activity rotates",
+      "ETF flows rebound",
+    ]);
+
+    expect(
+      await news.list({ assets: ["BTC"], limit: 10 }),
+    ).toHaveLength(1);
+    expect(
+      (await news.list({ assets: ["sol"], limit: 10 }))[0]?.title,
+    ).toBe("Layer-1 activity rotates");
+    expect(
+      await news.list({ assets: ["MISSING"], limit: 10 }),
+    ).toHaveLength(0);
+    expect(
+      await news.list({ assets: [], limit: 2 }),
+    ).toHaveLength(2);
+  });
+
+  test("news list matches title substrings and escapes LIKE wildcards", async () => {
+    await ingestNewsItem(
+      {
+        title: "100% rally on ETF flows",
+        url: "https://example.com/rally",
+        source: "https://example.com/rss",
+        tags: [],
+        publishedAt: "2026-10-29T12:00:00.000Z",
+      },
+      news,
+    );
+
+    // Substring in the title matches even with no tag hit.
+    expect(
+      await news.list({ assets: ["rally"], limit: 10 }),
+    ).toHaveLength(1);
+    // A literal % never acts as a wildcard.
+    expect(
+      await news.list({ assets: ["100%"], limit: 10 }),
+    ).toHaveLength(1);
+    expect(
+      await news.list({ assets: ["100"], limit: 10 }),
+    ).toHaveLength(1);
+  });
+
+  test("news list on an empty table returns no rows", async () => {
+    expect(await news.list({ assets: [], limit: 10 })).toEqual([]);
+    expect(await news.list({ assets: ["BTC"], limit: 10 })).toEqual([]);
+  });
+
   test("claimBatch hands each pending scan to exactly one caller", async () => {
     await scans.create({ kind: "feed" });
     await scans.create({ kind: "upload" });

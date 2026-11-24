@@ -83,7 +83,7 @@ describe.skipIf(!DATABASE_URL)("route status matrix", () => {
   beforeAll(async () => {
     await migrate(handle.pool, "up");
     await handle.pool.query(
-      "TRUNCATE users, refresh_tokens, scans, scan_artifacts, scan_matches, newsletter_subscriptions RESTART IDENTITY CASCADE",
+      "TRUNCATE users, refresh_tokens, scans, scan_artifacts, scan_matches, newsletter_subscriptions, news_items RESTART IDENTITY CASCADE",
     );
 
     ctx.server = await buildServer(undefined, {
@@ -480,6 +480,26 @@ describe.skipIf(!DATABASE_URL)("route status matrix", () => {
           invalidPayload: () => ({
             method: "GET",
             url: "/api/price-trend?window=BAD",
+          }),
+        },
+      },
+      {
+        method: "GET",
+        route: "/api/news",
+        expected: { anonymous: 200, user: 200, invalidPayload: 422 },
+        request: {
+          anonymous: () => ({
+            method: "GET",
+            url: "/api/news?watchlist=BTC&limit=10",
+          }),
+          user: () => ({
+            method: "GET",
+            url: "/api/news?watchlist=BTC&limit=10",
+            headers: userAuth(ctx),
+          }),
+          invalidPayload: () => ({
+            method: "GET",
+            url: "/api/news?watchlist=BTC&limit=0",
           }),
         },
       },
