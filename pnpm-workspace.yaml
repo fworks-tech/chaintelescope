@@ -6,3 +6,7 @@ allowBuilds:
   # argon2 ships prebuilt binaries through node-gyp-build; the install script
   # fetches/links them. Without it, `require("argon2")` throws on load.
   argon2: true
+  # esbuild's postinstall fetches the platform binary; without it vite/vitest
+  # fall back to wasm. Standard, no network exfil — approved so toolchain
+  # upgrades don't trip ERR_PNPM_IGNORED_BUILDS.
+  esbuild: true

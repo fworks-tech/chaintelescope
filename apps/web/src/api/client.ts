@@ -1,5 +1,5 @@
-import type { PriceTrend, TimeWindow } from "@chaintelescope/shared";
-import { TIME_WINDOW_DAYS } from "@chaintelescope/shared";
+import type { PriceTrend, TimeWindow } from "@chaintelescope/shared/market";
+import { TIME_WINDOW_DAYS } from "@chaintelescope/shared/market";
 
 /**
  * Base URL for the API. Dev proxies `/api` to localhost:3000 (vite.config.ts);
