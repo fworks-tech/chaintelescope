@@ -3,13 +3,14 @@ import type {
   Snapshot,
   TimeWindow,
 } from "@chaintelescope/shared";
+import { BINANCE_SYMBOLS } from "@chaintelescope/shared";
 import type { MarketProvider } from "../provider.js";
 import { buildSeries, windowDays } from "../utils.js";
 
 type FetchLike = typeof fetch;
 
 function symbolFor(asset: string): string {
-  return `${asset.toUpperCase()}USDT`;
+  return BINANCE_SYMBOLS[asset.toUpperCase()] ?? `${asset.toUpperCase()}USDT`;
 }
 
 export class BinanceMarketProvider implements MarketProvider {

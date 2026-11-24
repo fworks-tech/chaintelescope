@@ -3,13 +3,16 @@ import type {
   Snapshot,
   TimeWindow,
 } from "@chaintelescope/shared";
+import { COINBASE_PRODUCTS } from "@chaintelescope/shared";
 import type { MarketProvider } from "../provider.js";
 import { buildSeries, windowDays } from "../utils.js";
 
 type FetchLike = typeof fetch;
 
 function productFor(asset: string): string {
-  return `${asset.toUpperCase()}-USD`;
+  const product = COINBASE_PRODUCTS[asset.toUpperCase()];
+  if (!product) throw new Error(`coinbase product missing for ${asset}`);
+  return product;
 }
 
 export class CoinbaseMarketProvider implements MarketProvider {

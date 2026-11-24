@@ -126,6 +126,11 @@ jobs:
           node packages/openapi/generate.mjs
           git diff --exit-code -- packages/openapi/openapi.json
 
+      - name: Asset registry is up to date
+        run: |
+          node scripts/sync-asset-registry.mjs
+          git diff --exit-code -- apps/python/src/data/registry.generated.json
+
   python-app:
     name: Python app
     runs-on: ubuntu-latest

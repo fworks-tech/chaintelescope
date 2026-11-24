@@ -11,3 +11,4 @@ export * from "./canonical.js";
 export * from "./validation.js";
 export * from "./cursor.js";
 export * from "./market.js";
+export * from "./assets.js";
