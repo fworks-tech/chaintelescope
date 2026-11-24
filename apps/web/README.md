@@ -1,32 +1,48 @@
-# React + TypeScript + Vite
+# @chaintelescope/web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + Vite shell for the ChainTelescope UI, replacing the Streamlit views
+page by page. Stack decision and styling rules live in
+[ADR-0009](../../docs/adr/0009-mui-tailwind-ui-stack.md).
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+pnpm install
+pnpm build:shared          # packages/shared must be built before the app typechecks
+pnpm --filter @chaintelescope/web dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+`/api` is proxied to `http://localhost:3000` in dev (see `vite.config.ts`); set
+`VITE_API_BASE_URL` to point at another origin. Same-origin `/api` is the
+production default, so the Vercel rewrite needs no config.
+
+## Structure
+
+| Path | Role |
+| :--- | :--- |
+| `src/theme.ts` | MUI theme: Streamlit tokens, typography scale, component defaults |
+| `src/index.css` | Tailwind v4 layers (no preflight) + CSS tokens and global rules |
+| `src/components/Layout.tsx` | App shell: sticky header, primary nav, page container |
+| `src/components/PageHeader.tsx` | Title + caption + actions, shared by every screen |
+| `src/components/StatTile.tsx` | One KPI figure (label / value / delta) |
+| `src/pages/` | One file per route; stubs use `Placeholder` |
+| `src/api/client.ts` | Typed fetch wrapper over `GET /api/*` |
+
+## Styling rules
+
+- Component styling through MUI `sx`; layout and spacing through Tailwind
+  utilities. No new raw CSS except tokens.
+- `Typography`'s `color` prop only accepts `textSecondary`-style keys in MUI v9;
+  a dotted path like `color="text.secondary"` silently does nothing. Use
+  `sx={{ color: "text.secondary" }}`.
+- Semantic colors: `success.dark` / `error.dark` for text, `success.main` /
+  `error.main` for fills and chart strokes — `#12b76a` on white is 2.4:1.
+- Direction is never color-only: deltas carry an arrow glyph and a sign.
+
+## Gates
+
+```bash
+pnpm --filter @chaintelescope/web typecheck
+pnpm --filter @chaintelescope/web lint
+pnpm --filter @chaintelescope/web build
+```
