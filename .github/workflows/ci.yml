@@ -163,6 +163,12 @@ jobs:
       - name: Unit and smoke tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
+      - name: Vercel slim runtime smoke
+        run: |
+          python -m venv "$RUNNER_TEMP/vercel-venv"
+          "$RUNNER_TEMP/vercel-venv/bin/pip" install --disable-pip-version-check -q -r requirements-vercel.txt
+          "$RUNNER_TEMP/vercel-venv/bin/python" -c "import src.api"
+
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
