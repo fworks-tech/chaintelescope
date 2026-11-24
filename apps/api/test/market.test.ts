@@ -537,6 +537,52 @@ describe("fetchPriceTrend service parity (#138)", () => {
   });
 });
 
+describe("market chain partial failure (#177)", () => {
+  it("one bad asset fails the whole provider snapshot and falls through", async () => {
+    const partial = provider("binance", async (symbols) => ({
+      series: (symbols as readonly string[]).map((asset) => ({
+        asset,
+        dates: ["2026-01-01T00:00:00.000Z"],
+        prices: [asset === "BTC" ? 64000 : Number.NaN],
+        trend: [asset === "BTC" ? 64000 : Number.NaN],
+        source: "binance" as const,
+      })),
+      window: "30D" as TimeWindow,
+      provider: "binance" as const,
+    }));
+    const full = provider("coingecko", async () => ({
+      series: [
+        {
+          asset: "BTC",
+          dates: ["2026-01-01T00:00:00.000Z"],
+          prices: [64000],
+          trend: [64000],
+          source: "coingecko" as const,
+        },
+        {
+          asset: "ETH",
+          dates: ["2026-01-01T00:00:00.000Z"],
+          prices: [3200],
+          trend: [3200],
+          source: "coingecko" as const,
+        },
+      ],
+      window: "30D" as TimeWindow,
+      provider: "coingecko" as const,
+    }));
+    const chain = createMarketChain(
+      [partial, full],
+      { warn: vi.fn() },
+      { timeoutMs: 50 },
+    );
+    // Chain validation rejects the non-finite ETH point, so the whole
+    // binance snapshot fails over instead of returning a partial.
+    await expect(
+      chain(["BTC", "ETH"], "30D", new AbortController().signal),
+    ).resolves.toMatchObject({ provider: "coingecko" });
+  });
+});
+
 describe("market chain snapshot validation (#138 hardening)", () => {
   it("falls through when snapshot misses the requested asset", async () => {
     const chain = createMarketChain(
