@@ -1,3 +1,4 @@
+import type { NewsItem } from "@chaintelescope/shared";
 import type { PriceTrend, TimeWindow } from "@chaintelescope/shared/market";
 import { TIME_WINDOW_DAYS } from "@chaintelescope/shared/market";
 
@@ -56,4 +57,17 @@ export function getPriceTrend(
     days: String(TIME_WINDOW_DAYS[window]),
   });
   return getJson<PriceTrend>(`/price-trend?${params.toString()}`, signal);
+}
+
+/**
+ * Latest news rows for a watchlist. Mirrors Python `GET /api/news`.
+ * Empty watchlist means no filter (server returns the latest of everything).
+ */
+export function getNews(
+  watchlist = "BTC",
+  limit = 10,
+  signal?: AbortSignal,
+): Promise<NewsItem[]> {
+  const params = new URLSearchParams({ watchlist, limit: String(limit) });
+  return getJson<NewsItem[]>(`/news?${params.toString()}`, signal);
 }
