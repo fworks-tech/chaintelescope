@@ -27,6 +27,8 @@
     "test:watch": "pnpm -r test:watch",
     "api:openapi": "pnpm build:shared && pnpm build:api && node packages/openapi/generate.mjs",
     "api:openapi:check": "pnpm api:openapi && git diff --exit-code -- packages/openapi/openapi.json",
+    "sync:assets": "pnpm build:shared && node scripts/sync-asset-registry.mjs",
+    "sync:assets:check": "pnpm sync:assets && git diff --exit-code -- apps/python/src/data/registry.generated.json",
     "db:migrate": "pnpm --filter @chaintelescope/api db:migrate",
     "db:migrate:down": "pnpm --filter @chaintelescope/api db:migrate:down",
     "db:seed": "pnpm --filter @chaintelescope/api db:seed",
