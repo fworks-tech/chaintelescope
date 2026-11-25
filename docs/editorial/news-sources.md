@@ -41,6 +41,10 @@ Technical availability never overrides publisher terms.
 ## Takedown
 
 Set `enabled=false` (and `imageRights=denied` when applicable), regenerate the
-artifact, deploy the API and Python job, and verify the source disappears from
-ingestion. Purging existing rows is a separate, backed-up operator action; do
-not delete data automatically.
+artifact, and immediately disable `NewsJobSchedule` if deployed and stop any
+in-flight ECS task so an older image cannot keep fetching. Deploy the Node API
+with its serving gate, the rebuilt Python job image, and every Python web runtime
+that calls `load_news_items()` (FastAPI/Vercel and Streamlit). Verify both
+`GET /api/news` and the dashboard hide the source and that no new rows are
+written for it. Only then re-enable the schedule. Purging existing rows is a
+separate, backed-up operator action; do not delete data automatically.

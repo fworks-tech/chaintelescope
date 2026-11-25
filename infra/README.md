@@ -61,10 +61,11 @@ pnpm --filter @chaintelescope/infra exec cdk synth --strict
    definition and subnets (see step 6 for the network flags).
    News sources are rights-gated by `packages/shared/src/news-sources.ts`;
    `NEWS_FEED_URLS` is ignored. Before replacing an older running image, disable
-   the `NewsJobSchedule` rule so it stops fetching unapproved defaults, then
-   push the rebuilt image and re-enable the rule. Deploy the Node API with the
-   matching serving gate before re-enabling ingestion. Verify the job log names
-   the approved SEC source and never Cointelegraph/CoinDesk.
+   the `NewsJobSchedule` rule and stop any in-flight task. Push the rebuilt job
+   image, deploy the Node API with the matching serving gate, and redeploy every
+   Python web runtime that serves `/api/news` or the dashboard. Verify those
+   endpoints hide denied sources and that no new denied-source rows appear in
+   `news_items`. Only then re-enable the rule.
 4. `WEB_ORIGIN=https://<vercel-web-url> cdk deploy --strict` (diff first)
 5. Subscribe to alarms: `aws sns subscribe --topic-arn <Alarms ARN>
    --protocol email --notification-endpoint you@example.com`

@@ -1,9 +1,10 @@
 # Threat model
 
-Scope: the TypeScript API (`apps/api`), the PostgreSQL schema it owns, and the
-scheduled Python news writer that feeds `news_items`. The Python/Streamlit UI is
-frozen and outside this model; the production writer is included because it
-holds a database secret and crosses external source boundaries.
+Scope: the TypeScript API (`apps/api`), the PostgreSQL schema it owns, the
+scheduled Python news writer, and the shared `load_news_items()` path used by
+the Python web runtimes. The Python UI's newsletter store and assistant keys
+remain outside this model; news ingestion is included because it crosses
+external source boundaries and the writer holds a database secret.
 
 This is a lightweight model for a small service, not a formal assessment. The
 goal is that every control has a named attack it stops and every gap is a
@@ -30,7 +31,7 @@ browser ──HTTPS──▶ API process ──TCP──▶ PostgreSQL
 operator ──environment──▶ API process / Python news job
 Python news job ──HTTPS──▶ rights-approved sources
         │
-        └──TCP──▶ PostgreSQL (news rows only)
+        └──TCP──▶ PostgreSQL (shared DB credential; app writes only news_items)
 ```
 
 | Boundary           | Control                                                                          | Code / issue                                                     |
@@ -38,7 +39,8 @@ Python news job ──HTTPS──▶ rights-approved sources
 | Browser → API      | CORS allowlist, `SameSite=Strict` refresh cookie, JWT bearer auth, OWASP headers | `plugins/secure-headers.ts`, `env.ts`, `auth/strategy.ts` (#121) |
 | Browser → API      | Request shape and size limits (50 MiB, Joi contracts)                            | `plugins/validation.ts`, `routes/scans.ts` (#117, #122)          |
 | API → PostgreSQL   | Kysely parameter binding, SQL confined to `src/db/`, app-level state transitions | `db/*`, `scans/state-machine.ts` (#111, #114)                    |
-| Operator → process | Boot-time validation, no `.env` loading, redacted logs                           | `env.ts`, `server.ts` (#118)                                     |
+| Operator → Node API | Boot-time validation, no `.env` loading, redacted logs                           | `env.ts`, `server.ts` (#118)                                     |
+| Operator → Python job | ECS injects `PG*` secrets; local runs may load `.env` via `python-dotenv`       | `apps/python/src/data/news/writer.py`, `ingestion.py`             |
 | Python job → sources | Rights-approved registry only; no env override; review expiry disables access | `packages/shared/src/news-sources.ts`, ADR-0011                  |
 | Python job → Postgres | Parameterized writes, content-hash dedupe, mock rows rejected                  | `apps/python/src/data/news/writer.py`                             |
 

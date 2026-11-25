@@ -30,9 +30,8 @@ need the same bridge plus an explicit rights gate.
 - Cointelegraph and CoinDesk are disabled. SEC is the only enabled automatic
   source in this change. Federal Register and CoinGecko remain disabled until
   their adapters ship; CoinGecko also requires a paid API key.
-- No approved source currently grants image hotlink rights. The product uses
-  ChainTelescope-owned placeholders until a source-specific image license is
-  recorded.
+- No approved source currently grants image hotlink rights. The product remains
+  text/link-only and does not render third-party images.
 - Ingestion stores metadata and links only. It does not copy full article bodies
   or download third-party images.
 - Disabling a source stops new ingestion and `NewsRepo.list` immediately hides

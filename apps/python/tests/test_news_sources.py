@@ -1,5 +1,5 @@
 import unittest
-from datetime import date
+from datetime import UTC, date, datetime
 from threading import Event, Thread
 from unittest.mock import patch
 
@@ -58,19 +58,28 @@ class NewsSourceRegistryTests(unittest.TestCase):
             self.assertEqual(rss_feed_urls(TODAY), baseline)
 
     @patch("src.data.news.ingestion._parse_feed", return_value=[])
-    def test_ingestion_uses_only_the_approved_sec_feed(self, mock_parse):
+    @patch("src.data.news.sources.datetime")
+    def test_ingestion_uses_only_the_approved_sec_feed(self, mock_datetime, mock_parse):
+        mock_datetime.now.return_value = datetime(2026, 11, 24, tzinfo=UTC)
         with patch.dict("os.environ", {"NEWS_FEED_URLS": COINTELEGRAPH_FEED}):
             self.assertEqual(_feed_urls(), [SEC_FEED])
             load_news_items()
         mock_parse.assert_called_once_with(SEC_FEED)
 
-    @patch("src.data.news.ingestion.time.monotonic", side_effect=[0, 1, 3601])
+    @patch("src.data.news.ingestion.time.monotonic", side_effect=[0, 1, 1, 3601, 3602])
     @patch("src.data.news.ingestion._parse_feed", return_value=[])
     def test_feed_cache_respects_the_source_polling_interval(self, mock_parse, _mock_time):
         _cached_parse_feed(SEC_FEED)
         _cached_parse_feed(SEC_FEED)
         _cached_parse_feed(SEC_FEED)
         self.assertEqual(mock_parse.call_count, 2)
+
+    @patch("src.data.news.ingestion.time.monotonic", side_effect=[0, 3601, 3602])
+    @patch("src.data.news.ingestion._parse_feed", return_value=[])
+    def test_slow_download_does_not_expire_the_new_cache_immediately(self, mock_parse, _mock_time):
+        _cached_parse_feed(SEC_FEED)
+        _cached_parse_feed(SEC_FEED)
+        self.assertEqual(mock_parse.call_count, 1)
 
     def test_expired_source_is_not_returned(self):
         expired = dict(NEWS_SOURCES[0], reviewExpiresAt="2026-11-23")
@@ -97,8 +106,7 @@ class NewsSourceRegistryTests(unittest.TestCase):
             patch("src.data.news.ingestion.time.monotonic", side_effect=[3601, 3602]),
             patch("src.data.news.ingestion._parse_feed", side_effect=RuntimeError("down")),
         ):
-            with self.assertRaises(RuntimeError):
-                _cached_parse_feed(SEC_FEED)
+            self.assertEqual(_cached_parse_feed(SEC_FEED), stale)
             self.assertEqual(_cached_parse_feed(SEC_FEED), stale)
 
     def test_concurrent_misses_share_one_fetch(self):

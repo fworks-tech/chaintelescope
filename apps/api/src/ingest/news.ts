@@ -59,12 +59,8 @@ export function normalizeNewsPublishedAt(value: string): string {
     Date.UTC(year, month - 1, day, hour, minute, second),
   );
   if (
-    calendarCheck.getUTCFullYear() !== year ||
-    calendarCheck.getUTCMonth() !== month - 1 ||
-    calendarCheck.getUTCDate() !== day ||
-    calendarCheck.getUTCHours() !== hour ||
-    calendarCheck.getUTCMinutes() !== minute ||
-    calendarCheck.getUTCSeconds() !== second
+    Number.isNaN(calendarCheck.getTime()) ||
+    calendarCheck.toISOString().slice(0, 19) !== value.slice(0, 19)
   ) {
     throw new ValidationError("Invalid publication date");
   }

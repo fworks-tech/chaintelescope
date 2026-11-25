@@ -155,11 +155,14 @@ def _cached_parse_feed(url: str) -> list[FeedItem]:
             return cached[1] if cached is not None else []
         try:
             items = _parse_feed(url)
-        except Exception:
+        except Exception as exc:
             _FEED_FAILURES[url] = now
+            if cached is not None:
+                logger.warning("Feed parse failed for {}: {}; serving stale cache", url, exc)
+                return cached[1]
             raise
         _FEED_FAILURES.pop(url, None)
-        _FEED_CACHE[url] = (now, items)
+        _FEED_CACHE[url] = (time.monotonic(), items)
         return items
 
 

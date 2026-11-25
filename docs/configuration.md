@@ -39,12 +39,13 @@ review date. `NEWS_FEED_URLS` is no longer read and cannot bypass the registry.
 The Node `NewsRepo` applies the same approved-source gate when reading existing
 rows, so denied sources are hidden without deleting data. The Python process
 caches successful feeds for their registered interval, serializes concurrent
-misses, and backs off failed feeds for five minutes.
+misses, and backs off failed feeds for five minutes, serving stale cache when
+available.
 
 The only enabled automatic source in the initial registry is the SEC RSS feed.
 Federal Register and CoinGecko remain disabled until their adapters ship.
-Cointelegraph and CoinDesk are disabled pending rights review. See
-[editorial/news-sources.md](editorial/news-sources.md).
+Cointelegraph is denied without written permission; CoinDesk awaits rights
+review. See [editorial/news-sources.md](editorial/news-sources.md).
 
 When feeds are unreachable or empty, the local Python UI may use normalized
 fallback items. The scheduled writer never persists mock rows.

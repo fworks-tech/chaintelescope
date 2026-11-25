@@ -80,7 +80,8 @@ Python:
 
 ## Config & secrets
 
-- Python: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWSLETTER_*`, `CORS_ORIGINS`. News sources come from the rights-gated generated registry, not `NEWS_FEED_URLS`. See `docs/configuration.md`.
+- Python UI: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWSLETTER_*`, `CORS_ORIGINS`. News sources come from the rights-gated generated registry, not `NEWS_FEED_URLS`. See `docs/configuration.md`.
+- Python news job: reads `DATABASE_URL` or `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE`; ECS injects the `PG*` secrets. Sources come from the same rights-gated registry.
 - Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL` or `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` parts, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`, `CORS_ORIGINS`, `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`). Nothing loads `.env` automatically — use `node --env-file`.
 - Never commit `.env`, `.streamlit/secrets.toml`, or real peppers/JWT secrets.
 - The model is written down: `docs/security/threat-model.md` (assets, boundaries, attacks, OWASP mapping) and `docs/security/secrets.md` (every variable above, rotation, leak impact). Read them before adding a secret or an outbound integration.
