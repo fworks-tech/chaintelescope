@@ -37,6 +37,50 @@ export interface RawNewsItem {
   readonly fetchAttempt?: number | undefined;
 }
 
+/** Python `datetime.isoformat()` lexical form: UTC, microseconds only when present. */
+export function normalizeNewsPublishedAt(value: string): string {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})?$/.exec(
+      value,
+    );
+  if (match === null) {
+    throw new ValidationError("Invalid publication date");
+  }
+
+  const [
+    year = NaN,
+    month = NaN,
+    day = NaN,
+    hour = NaN,
+    minute = NaN,
+    second = NaN,
+  ] = match.slice(1, 7).map((part) => Number(part));
+  const calendarCheck = new Date(
+    Date.UTC(year, month - 1, day, hour, minute, second),
+  );
+  if (
+    calendarCheck.getUTCFullYear() !== year ||
+    calendarCheck.getUTCMonth() !== month - 1 ||
+    calendarCheck.getUTCDate() !== day ||
+    calendarCheck.getUTCHours() !== hour ||
+    calendarCheck.getUTCMinutes() !== minute ||
+    calendarCheck.getUTCSeconds() !== second
+  ) {
+    throw new ValidationError("Invalid publication date");
+  }
+
+  const offset = match[8];
+  const parsed = new Date(offset === undefined ? `${value}Z` : value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new ValidationError("Invalid publication date");
+  }
+
+  const fraction = match[7];
+  const microseconds = fraction?.slice(0, 6).padEnd(6, "0") ?? "000000";
+  const suffix = microseconds === "000000" ? "" : `.${microseconds}`;
+  return `${parsed.toISOString().slice(0, 19)}${suffix}+00:00`;
+}
+
 /**
  * Processa a ingestão de um item de notícia de forma idempotente.
  *
@@ -60,8 +104,9 @@ export async function ingestNewsItem(
   }
 
   // Constrói o pre-image canônico estritamente com campos imutáveis de negócio
+  const publishedAt = normalizeNewsPublishedAt(item.publishedAt);
   const canonicalPayload: JsonValue = {
-    publishedAt: item.publishedAt,
+    publishedAt,
     title: item.title,
     url: item.url,
   };
@@ -75,7 +120,7 @@ export async function ingestNewsItem(
     source: item.source ?? "",
     // Tags gravadas minúsculas: a leitura compara exato (case único canônico).
     tags: (item.tags ?? []).map((tag) => tag.toLowerCase()),
-    publishedAt: item.publishedAt,
+    publishedAt,
     contentHash,
     canonicalPayload: canonicalBytes.toString("utf8"),
   });

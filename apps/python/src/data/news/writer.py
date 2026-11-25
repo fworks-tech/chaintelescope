@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import sys
+from datetime import UTC, datetime
 
 from loguru import logger
 from src.data.news.ingestion import load_news_items
@@ -27,6 +28,12 @@ RETURNING id
 """
 
 
+def utc_published_at(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
 def canonical_payload(item: FeedItem) -> str:
     """Canonical pre-image: sorted keys, compact separators, no ASCII escape.
 
@@ -38,9 +45,10 @@ def canonical_payload(item: FeedItem) -> str:
     any future writer must emit the same lexical form or `content_hash`
     will never collide (vector test pins this side).
     """
+    published_at = utc_published_at(item.published_at)
     return json.dumps(
         {
-            "publishedAt": item.published_at.isoformat(),
+            "publishedAt": published_at.isoformat(),
             "title": item.title,
             "url": item.url,
         },
@@ -98,7 +106,7 @@ def write_news_items(conn, items: list[FeedItem]) -> dict:
                     item.url,
                     item.source,
                     [tag.lower() for tag in item.tags],
-                    item.published_at,
+                    utc_published_at(item.published_at),
                     content_hash(canonical),
                     canonical,
                 ),

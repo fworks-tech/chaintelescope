@@ -20,6 +20,7 @@ Single entry point for ChainTelescope documentation. If a doc is not listed here
 - [`adr/0008-monorepo-target-architecture.md`](adr/0008-monorepo-target-architecture.md) — multi-app monorepo target (`apps/*`, `packages/*`, `infra/`); supersedes the `frontend/` layout in `spec/100`
 - [`adr/0009-mui-tailwind-ui-stack.md`](adr/0009-mui-tailwind-ui-stack.md) — MUI + Tailwind as the web UI stack, themed from the Streamlit tokens
 - [`adr/0010-serve-vs-feed.md`](adr/0010-serve-vs-feed.md) — Node serves as system of record, Python feeds via scheduled jobs
+- [`adr/0011-rights-gated-news-sources.md`](adr/0011-rights-gated-news-sources.md) — source permissions, review expiry, generated registry and media policy
 - [`adr/archive/`](adr/archive/) — superseded records (do not rewrite; see ADR-0007)
 
 ## Specs (canonical — `tasks/` retired)
@@ -41,6 +42,7 @@ Single entry point for ChainTelescope documentation. If a doc is not listed here
 - [`security/threat-model.md`](security/threat-model.md) — assets, trust boundaries, attacks, OWASP mapping
 - [`security/secrets.md`](security/secrets.md) — every API variable, rotation, leak response
 - [`security/passwords.md`](security/passwords.md) — Argon2id, throttling, rotation
+- [`editorial/news-sources.md`](editorial/news-sources.md) — source rights, image policy, onboarding and takedown
 
 ## Research
 

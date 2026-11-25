@@ -59,6 +59,12 @@ pnpm --filter @chaintelescope/infra exec cdk synth --strict
    The rule has no retry/DLQ by design (hourly cadence, idempotent rerun):
    redrive a failed run by hand with `aws ecs run-task` using the same task
    definition and subnets (see step 6 for the network flags).
+   News sources are rights-gated by `packages/shared/src/news-sources.ts`;
+   `NEWS_FEED_URLS` is ignored. Before replacing an older running image, disable
+   the `NewsJobSchedule` rule so it stops fetching unapproved defaults, then
+   push the rebuilt image and re-enable the rule. Deploy the Node API with the
+   matching serving gate before re-enabling ingestion. Verify the job log names
+   the approved SEC source and never Cointelegraph/CoinDesk.
 4. `WEB_ORIGIN=https://<vercel-web-url> cdk deploy --strict` (diff first)
 5. Subscribe to alarms: `aws sns subscribe --topic-arn <Alarms ARN>
    --protocol email --notification-endpoint you@example.com`
@@ -96,7 +102,7 @@ has no failover — that is the accepted dev trade-off.
   SNS; idempotent ingest (`ON CONFLICT DO NOTHING`) makes reruns safe.
 - **Security:** RDS secret generated, app secrets by reference (never in the
   template), no `DATABASE_URL` string assembled at synth time, isolated DB
-  subnets, least-privilege SG (Fargate → 5432 only).
+  subnets, least-privilege SG (Fargate → 5432 only), rights-gated news sources.
 - **Cost:** smallest Fargate/RDS sizes, gp3, no NAT, 1-day backups.
 - **Operations:** one stack, `cdk diff` before every deploy, synth assertions
   pin the baseline shape.

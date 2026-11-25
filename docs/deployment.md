@@ -32,7 +32,6 @@ Fill in the values:
 | `OPENAI_TIMEOUT_SECONDS`         | No                 | `15`                         | HTTP timeout in seconds                                                                           |
 | `MARKET_PROVIDER`                | No                 | `auto`                       | `auto`, `binance`, `coingecko`, `coinbase`, or `mock`                                             |
 | `MARKET_REQUEST_TIMEOUT_SECONDS` | No                 | `10`                         | Per-provider market timeout; Node market chain returns 503 with `Retry-After` when providers fail |
-| `NEWS_FEED_URLS`                 | No                 | CoinDesk + Cointelegraph RSS | Comma-separated RSS/Atom URLs                                                                     |
 | `NEWSLETTER_PROVIDER`            | No                 | `stub`                       | Delivery adapter name                                                                             |
 | `NEWSLETTER_API_KEY`             | For non-stub       | —                            | Provider credential                                                                               |
 
@@ -182,7 +181,7 @@ For production deploys, add a deploy job that rebuilds and restarts the Docker s
 | ----------------------------- | -------------------------- | -------------------------------------------------------- |
 | App doesn't start             | Port 8501 in use           | `netstat -tulpn \| grep 8501`; kill conflicting process  |
 | AI assistant returns fallback | No `OPENAI_API_KEY`        | Set the env var and restart                              |
-| News shows mock headlines     | Feeds unreachable          | Check `NEWS_FEED_URLS` and network connectivity          |
+| News shows mock headlines     | Approved feeds unreachable | Check the source registry, SEC feed status and network connectivity |
 | Price chart shows mock data   | All exchange APIs down     | Check provider status; market will auto-fallback to mock |
 | Docker build fails            | Python dependency mismatch | `docker compose build --no-cache` to refresh layers      |
 

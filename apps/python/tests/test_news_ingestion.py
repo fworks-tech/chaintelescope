@@ -1,12 +1,8 @@
 import unittest
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import UTC, datetime
 
-from src.data.news.ingestion import (
-    ATOM_NS,
-    _parse_atom_entry,
-    _parse_rss_entry,
-)
+from src.data.news.ingestion import ATOM_NS, _parse_atom_entry, _parse_date, _parse_rss_entry
 
 ATOM_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
@@ -103,6 +99,10 @@ class ParseAtomEntryTests(unittest.TestCase):
         item = _parse_atom_entry(entries[3], SOURCE_URL)
         self.assertIsNotNone(item)
         self.assertEqual(item.title, "Unparseable date")
+
+    def test_normalizes_non_utc_rss_dates_to_utc(self):
+        parsed = _parse_date("Fri, 20 Nov 2026 13:03:24 -0500", is_atom=False)
+        self.assertEqual(parsed, datetime(2026, 11, 20, 18, 3, 24, tzinfo=UTC))
 
     def test_uses_source_url_when_link_missing(self):
         entries = _atom_entries()

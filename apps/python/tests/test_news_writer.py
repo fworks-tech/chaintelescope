@@ -1,7 +1,7 @@
 import hashlib
 import json
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from src.data.news.models import FeedItem
@@ -34,6 +34,23 @@ class CanonicalHashTests(unittest.TestCase):
             '{"publishedAt":"2026-10-26T12:00:00+00:00",'
             '"title":"ETF flows rebound",'
             '"url":"https://example.com/etf-flows"}',
+        )
+
+    def test_canonical_payload_normalizes_non_utc_offsets(self):
+        item = _item(
+            published_at=datetime(
+                2026,
+                10,
+                26,
+                7,
+                0,
+                0,
+                tzinfo=timezone(timedelta(hours=-5)),
+            )
+        )
+        self.assertIn(
+            '"publishedAt":"2026-10-26T12:00:00+00:00"',
+            canonical_payload(item),
         )
 
     def test_content_hash_is_sha256_of_canonical_bytes(self):
@@ -97,6 +114,27 @@ class WriteNewsItemsTests(unittest.TestCase):
         payload = json.loads(params[6])
         self.assertEqual(payload["title"], "ETF flows rebound")
         self.assertEqual(params[5], content_hash(params[6]))
+
+    def test_row_persists_the_same_utc_instant_used_in_the_hash(self):
+        conn, cur = self._conn([{"id": "x"}])
+        item = _item(
+            published_at=datetime(
+                2026,
+                10,
+                26,
+                7,
+                0,
+                0,
+                tzinfo=timezone(timedelta(hours=-5)),
+            )
+        )
+        write_news_items(conn, [item])
+        params = cur.execute.call_args.args[1]
+        self.assertEqual(params[4], datetime(2026, 10, 26, 12, 0, 0, tzinfo=UTC))
+        self.assertEqual(
+            json.loads(params[6])["publishedAt"],
+            "2026-10-26T12:00:00+00:00",
+        )
 
     def test_mid_loop_error_propagates_without_commit(self):
         conn, cur = self._conn([{"id": "x"}])

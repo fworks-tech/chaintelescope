@@ -27,9 +27,8 @@ docker logs chain-telescope-streamlit --tail 50 | grep -i "error\|traceback\|exc
 # Check mock vs live data source
 # Open the dashboard and verify the price chart caption shows the expected source
 
-# Verify news feeds are resolving
-curl -s -o /dev/null -w "%{http_code}" https://www.coindesk.com/arc/outboundfeeds/rss/
-curl -s -o /dev/null -w "%{http_code}" https://cointelegraph.com/rss
+# Verify approved news sources are resolving
+curl -s -o /dev/null -w "%{http_code}" https://www.sec.gov/news/pressreleases.rss
 ```
 
 ### Services checklist
@@ -37,7 +36,7 @@ curl -s -o /dev/null -w "%{http_code}" https://cointelegraph.com/rss
 | Service | Check | Frequency |
 |---------|-------|-----------|
 | Streamlit UI | HTTP 200 on :8501 | Every 30s (Docker healthcheck) |
-| News feeds | RSS resolves | Daily |
+| News sources | Approved registry endpoint resolves | Daily |
 | Market APIs | Price chart shows real data | Daily |
 | Newsletter storage | `$NEWSLETTER_DATA_DIR/newsletter_subscriptions.json` (default `data/` relative to the process working directory) writable | Weekly |
 | Disk space | `df -h` < 80% | Weekly |
@@ -129,9 +128,9 @@ Symptom: Price chart shows mock data, news shows fallback headlines
    curl -s https://api.binance.com/api/v3/ping
    curl -s https://api.coingecko.com/api/v3/ping
    ```
-2. Check news feeds:
+2. Check the approved news source:
    ```bash
-   curl -s -o /dev/null -w "%{http_code}" https://www.coindesk.com/arc/outboundfeeds/rss/
+   curl -s -o /dev/null -w "%{http_code}" https://www.sec.gov/news/pressreleases.rss
    ```
 3. Check logs for provider errors:
    ```bash
