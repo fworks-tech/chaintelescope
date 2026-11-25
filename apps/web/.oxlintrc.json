@@ -10,7 +10,7 @@
         "paths": [
           {
             "name": "react-redux",
-            "message": "Use the typed hooks from src/store/hooks.ts; Provider is allowed only in approved entry/test files."
+            "message": "Use the typed hooks from src/store/hooks.ts; Provider belongs in src/store/StoreProvider.tsx."
           }
         ]
       }
@@ -21,6 +21,23 @@
       "files": ["src/store/hooks.ts"],
       "rules": {
         "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["src/store/StoreProvider.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react-redux",
+                "allowImportNames": ["Provider"],
+                "message": "Only Provider is allowed in StoreProvider."
+              }
+            ]
+          }
+        ]
       }
     }
   ]

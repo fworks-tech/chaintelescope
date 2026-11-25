@@ -1,7 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
-// oxlint-disable-next-line no-restricted-imports -- Provider is required by this component test.
-import { Provider } from "react-redux";
 import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NewsItem } from "@chaintelescope/shared";
@@ -9,6 +7,7 @@ import News from "./News.tsx";
 import { formatPublished, hostOf, isHttpUrl } from "../lib/news.ts";
 import { HttpApiError } from "../api/client.js";
 import { newsReducer } from "../store/news/newsSlice.js";
+import { StoreProvider } from "../store/StoreProvider.tsx";
 
 vi.mock("../api/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/client.js")>()),
@@ -23,7 +22,7 @@ async function loadMock() {
 function renderNews(strict = false) {
   const store = configureStore({ reducer: { news: newsReducer } });
   const view = render(
-    <Provider store={store}>
+    <StoreProvider store={store}>
       {strict ? (
         <StrictMode>
           <News />
@@ -31,7 +30,7 @@ function renderNews(strict = false) {
       ) : (
         <News />
       )}
-    </Provider>,
+    </StoreProvider>,
   );
   return { ...view, store };
 }

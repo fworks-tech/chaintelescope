@@ -34,6 +34,7 @@ preview can write (newsletter subscribe is public).
 | `src/pages/` | One file per route; stubs use `Placeholder` |
 | `src/api/client.ts` | Typed fetch wrapper over `GET /api/*`; parses Boom errors into `HttpApiError`, and `toApiError` returns serializable rejection values |
 | `src/store/index.ts` | Typed Redux Toolkit store (`RootState` / `AppDispatch`) |
+| `src/store/StoreProvider.tsx` | Single approved React-Redux `Provider` boundary |
 | `src/store/hooks.ts` | Only approved `useAppDispatch` / `useAppSelector` hooks |
 | `src/store/news/newsSlice.ts` | Normalized News entities + abortable `fetchNews` lifecycle |
 
