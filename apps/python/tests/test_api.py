@@ -1,10 +1,11 @@
 import unittest
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from src.api import app
 from src.data.market import service as market_service
+from src.data.news.models import FeedItem
 
 client = TestClient(app)
 
@@ -66,6 +67,36 @@ class ApiNewsTests(unittest.TestCase):
         resp = client.get("/api/news?watchlist=BTC&limit=1")
         self.assertEqual(resp.status_code, 200)
         self.assertLessEqual(len(resp.json()), 1)
+
+    @patch("src.data.news.ingestion.load_news_items")
+    def test_news_uses_shared_item_contract(self, mock_load):
+        mock_load.return_value = [
+            FeedItem(
+                id="news-1",
+                source="https://www.sec.gov/news/pressreleases.rss",
+                published_at=datetime(2026, 11, 20, 18, 3, 24, tzinfo=UTC),
+                title="SEC news",
+                url="https://www.sec.gov/newsroom/press-releases/2026-117",
+                tags=["sec"],
+            )
+        ]
+
+        resp = client.get("/api/news?watchlist=BTC&limit=1")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json(),
+            [
+                {
+                    "id": "news-1",
+                    "source": "https://www.sec.gov/news/pressreleases.rss",
+                    "publishedAt": "2026-11-20T18:03:24+00:00",
+                    "title": "SEC news",
+                    "url": "https://www.sec.gov/newsroom/press-releases/2026-117",
+                    "tags": ["sec"],
+                }
+            ],
+        )
 
 
 class ApiAlertsTests(unittest.TestCase):
