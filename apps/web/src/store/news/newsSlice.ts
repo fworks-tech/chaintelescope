@@ -6,7 +6,7 @@ import {
 import type { NewsItem } from "@chaintelescope/shared";
 import { getNews, toApiError, type ApiError } from "../../api/client.js";
 
-export interface FetchNewsArgs {
+interface FetchNewsArgs {
   readonly watchlist: string;
   readonly limit: number;
 }
