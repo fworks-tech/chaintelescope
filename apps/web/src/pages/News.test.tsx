@@ -7,6 +7,8 @@ import News from "./News.tsx";
 import { formatPublished, hostOf, isHttpUrl } from "../lib/news.ts";
 import { HttpApiError } from "../api/client.js";
 import { newsReducer } from "../store/news/newsSlice.js";
+import { scansReducer } from "../store/scans/scansSlice.js";
+import { uploadProgressReducer } from "../store/uploadProgress/uploadProgressSlice.js";
 import { StoreProvider } from "../store/StoreProvider.tsx";
 
 vi.mock("../api/client.js", async (importOriginal) => ({
@@ -20,7 +22,13 @@ async function loadMock() {
 }
 
 function renderNews(strict = false) {
-  const store = configureStore({ reducer: { news: newsReducer } });
+  const store = configureStore({
+    reducer: {
+      news: newsReducer,
+      scans: scansReducer,
+      uploadProgress: uploadProgressReducer,
+    },
+  });
   const view = render(
     <StoreProvider store={store}>
       {strict ? (
