@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from src.api import app
+from src.data.dashboard_query import DashboardSnapshot
 from src.data.market import service as market_service
 from src.data.news.models import FeedItem
 
@@ -27,8 +28,8 @@ class ApiSnapshotTests(unittest.TestCase):
         resp = client.get("/api/snapshot?window=30D&assets=BTC&source=mock")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertIn("primary_asset", data)
-        self.assertIn("price_values", data)
+        self.assertIn("primaryAsset", data)
+        self.assertIn("priceValues", data)
         self.assertIn("kpis", data)
         self.assertIn("alerts", data)
 
@@ -37,6 +38,68 @@ class ApiSnapshotTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertIn("BTC", data["watchlist"])
+
+    @patch("src.api.load_dashboard_snapshot")
+    def test_snapshot_uses_shared_camel_case_contract(self, mock_load):
+        mock_load.return_value = DashboardSnapshot(
+            time_window="30D",
+            watchlist=["BTC", "ETH"],
+            trend_filter="all",
+            primary_asset="BTC",
+            price_dates=[datetime(2026, 1, 1, tzinfo=UTC)],
+            price_values=[100.0],
+            price_trend=[],
+            price_source="mock",
+            trending=None,
+            kpis=[
+                {
+                    "label": "Market Cap Tracked",
+                    "value": "$1.91T",
+                    "delta": "+2.8%",
+                    "color": "#12b76a",
+                }
+            ],
+            risk_scores=[62],
+            risk_labels=["Market"],
+            risk_colors=["#f79009"],
+            alerts=["BTC below 63,500"],
+            news=["SEC proposal"],
+            news_items=[],
+        )
+
+        resp = client.get("/api/snapshot?window=30D&assets=BTC,ETH&source=mock")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp.json(),
+            {
+                "timeWindow": "30D",
+                "watchlist": ["BTC", "ETH"],
+                "trendFilter": "all",
+                "primaryAsset": "BTC",
+                "priceDates": ["2026-01-01T00:00:00+00:00"],
+                "priceValues": [100.0],
+                "priceSource": "mock",
+                "kpis": [
+                    {
+                        "label": "Market Cap Tracked",
+                        "value": "$1.91T",
+                        "delta": "+2.8%",
+                        "color": "#12b76a",
+                    }
+                ],
+                "riskScores": [62],
+                "riskLabels": ["Market"],
+                "riskColors": ["#f79009"],
+                "alerts": ["BTC below 63,500"],
+                "news": ["SEC proposal"],
+            },
+        )
+
+    def test_snapshot_rejects_unknown_time_window(self):
+        resp = client.get("/api/snapshot?window=1H&assets=BTC&source=mock")
+
+        self.assertEqual(resp.status_code, 422)
 
 
 class ApiPriceTrendTests(unittest.TestCase):
