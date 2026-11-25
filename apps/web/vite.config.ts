@@ -11,6 +11,18 @@ export default defineConfig({
         target: "http://localhost:3000",
         changeOrigin: true,
       },
+      "/scans": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/auth": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/newsletter": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
     },
   },
 });

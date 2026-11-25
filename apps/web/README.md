@@ -21,22 +21,25 @@ default; in prod the Vercel rewrite sends `/api/*` to the API origin
 When verifying, confirm which backend served the response. Note: every Vercel
 preview rewrites to the same prod API — fine for reads, think twice once a
 preview can write (newsletter subscribe is public).
+Node routes (`/scans`, `/auth/*`, `/newsletter/subscribe`) use
+`VITE_NODE_API_BASE_URL` with no same-origin fallback; dev proxies them to
+`http://localhost:3000`. They stay dormant until the serving cutover (#210).
 
 ## Structure
 
-| Path | Role |
-| :--- | :--- |
-| `src/theme.ts` | MUI theme: Streamlit tokens, typography scale, component defaults |
-| `src/index.css` | Tailwind v4 layers (no preflight) + CSS tokens and global rules |
-| `src/components/Layout.tsx` | App shell: sticky header, primary nav, page container |
-| `src/components/PageHeader.tsx` | Title + caption + actions, shared by every screen |
-| `src/components/StatTile.tsx` | One KPI figure (label / value / delta) |
-| `src/pages/` | One file per route; stubs use `Placeholder` |
-| `src/api/client.ts` | Typed fetch wrapper over `GET /api/*`; parses Boom errors into `HttpApiError`, and `toApiError` returns serializable rejection values |
-| `src/store/index.ts` | Typed Redux Toolkit store (`RootState` / `AppDispatch`) |
-| `src/store/StoreProvider.tsx` | Single approved React-Redux `Provider` boundary |
-| `src/store/hooks.ts` | Only approved `useAppDispatch` / `useAppSelector` hooks |
-| `src/store/news/newsSlice.ts` | Normalized News entities + abortable `fetchNews` lifecycle |
+| Path                            | Role                                                                                                                                                                                                                   |
+| :------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/theme.ts`                  | MUI theme: Streamlit tokens, typography scale, component defaults                                                                                                                                                      |
+| `src/index.css`                 | Tailwind v4 layers (no preflight) + CSS tokens and global rules                                                                                                                                                        |
+| `src/components/Layout.tsx`     | App shell: sticky header, primary nav, page container                                                                                                                                                                  |
+| `src/components/PageHeader.tsx` | Title + caption + actions, shared by every screen                                                                                                                                                                      |
+| `src/components/StatTile.tsx`   | One KPI figure (label / value / delta)                                                                                                                                                                                 |
+| `src/pages/`                    | One file per route; stubs use `Placeholder`                                                                                                                                                                            |
+| `src/api/client.ts`             | Typed fetch wrapper over `GET /api/*` plus dormant Node calls (`/scans`, `/auth/*`, `/newsletter/subscribe`, snapshot); parses Boom errors into `HttpApiError`, and `toApiError` returns serializable rejection values |
+| `src/store/index.ts`            | Typed Redux Toolkit store (`RootState` / `AppDispatch`)                                                                                                                                                                |
+| `src/store/StoreProvider.tsx`   | Single approved React-Redux `Provider` boundary                                                                                                                                                                        |
+| `src/store/hooks.ts`            | Only approved `useAppDispatch` / `useAppSelector` hooks                                                                                                                                                                |
+| `src/store/news/newsSlice.ts`   | Normalized News entities + abortable `fetchNews` lifecycle                                                                                                                                                             |
 
 ## Styling rules
 
