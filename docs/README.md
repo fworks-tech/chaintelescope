@@ -27,6 +27,7 @@ Single entry point for ChainTelescope documentation. If a doc is not listed here
 
 - [`spec/074-fix-rss-feedparser.md`](spec/074-fix-rss-feedparser.md) — replace feedparser with httpx + ElementTree
 - [`spec/100-vercel-fastapi-react-mvp.md`](spec/100-vercel-fastapi-react-mvp.md) — Vercel FastAPI + React SPA MVP (directory layout superseded by ADR-0008)
+- [`spec/129-redux-toolkit-news-store.md`](spec/129-redux-toolkit-news-store.md) — typed Redux Toolkit store and News async lifecycle (partial #129)
 
 ## Operations
 

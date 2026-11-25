@@ -55,8 +55,8 @@ Node:
   - `src/plugins/` — `validation.ts` (Joi + 422 `failAction`) and `errors.ts` (single error envelope, 500 opacity, 503 when `server.app.degraded`)
   - `src/db/` — `schema.ts` (hand-written `DB` mirroring the migrations), `tx.ts` (`withTx`), `repos/{scans,artifacts,news,snapshots,assets,auth}.ts`, `chunks.ts`, `pool.ts` (Kysely decorated as `server.db`), `migrate.ts`, `analytics.ts` (carrega os `.sql`)
   - `sql/` — as três consultas analíticas (histórico, cobertura, blocklist), lidas em runtime por `db/analytics.ts`
-  - `src/routes/` — `health.ts`, `scans.ts` (streamed upload, keyset list, cancel/delete), `newsletter.ts`, and `market.ts` (`GET /api/price-trend`, `GET /api/snapshot` returns 503 until non-market deps land); `news`/`alerts` are not registered until their data sources land
-- `apps/web` — Vite + React 19 shell: `BrowserRouter` (`Layout` + `Dashboard` + `NotFound`), typed `api/client.ts` (`import type` from `@chaintelescope/shared` only; `VITE_API_BASE_URL`, default `/api`), dev proxy `/api` → `localhost:3000`, Vercel SPA rewrite; no state layer yet
+  - `src/routes/` — `health.ts`, `scans.ts` (streamed upload, keyset list, cancel/delete), `news.ts` (`GET /api/news`), `newsletter.ts`, and `market.ts` (`GET /api/price-trend`, `GET /api/snapshot` returns 503 until non-market deps land); `alerts` is not registered until its data source lands
+- `apps/web` — Vite + React 19 shell: `createBrowserRouter` (`Layout` + `Dashboard` + `News` + `NotFound`; alerts/risk/newsletter are placeholders), typed `api/client.ts` (shared types plus runtime `TIME_WINDOW_DAYS`; `VITE_API_BASE_URL`, default `/api`), Redux Toolkit store with normalized News state and typed hooks, dev proxy `/api` → `localhost:3000`, Vercel SPA rewrite
 - `packages/openapi/` is generated, never hand-edited: `pnpm api:openapi` builds shared/api and reads `server.table()` + Joi `describe()`. CI's build job regenerates it and fails on `git diff`. `apps/api/test/matrix.integration.test.ts` pins every route's statuses and cross-checks its route list against `server.table()`; add a row with every new route.
 - `packages/shared` — contracts: `canonicalize`, `digestsEqual`, `HEALTH_PATH`, the Joi request schemas in `validation.ts`, and the opaque `(created_at, id)` cursor in `cursor.ts`
 - `apps/api/bench/` — `main-thread-vs-pool.mjs` (worker-vs-main JSON parse); not wired into CI
@@ -66,7 +66,7 @@ Node:
 Python:
 
 - `apps/python/app.py` — Streamlit entrypoint (`st.navigation`), `apps/python/pages/` thin stubs → `apps/python/src/views/` → `apps/python/src/components/`
-- `apps/python/src/api.py` — FastAPI, 7 endpoints (the Node port covers none of them yet)
+- `apps/python/src/api.py` — FastAPI, 7 endpoints (Node coverage is partial; see `docs/port-inventory.md`)
 - `apps/python/src/data/` — dashboard query, market providers via `ccxt_adapter.py`, news ingestion, alerts, newsletter
 - `apps/python/src/data/assets.py` — 100 asset symbols with provider ID mappings
 - `apps/python/tests/` — unittest only
@@ -113,6 +113,6 @@ Python:
 - `kysely` is pinned to `^0.28` because 0.29+ declares `engines.node >= 22`; the repo, `.nvmrc` and CI target Node 20. Moving to Node 22 (then kysely 0.29) is a separate chore.
 - `ScansRepo.list` paginates on the tuple `(created_at, id)` — a timestamp-only cursor silently drops rows that share an instant.
 - `hapi-pino` is registered in `buildServer` (`silent` in tests); it redacts `authorization`, `cookie` and `set-cookie`. `request.log` reaches the destination from there.
-- `apps/web` is a shell (router + dashboard + typed price-trend client); the React surface is greenfield beyond that, not a partial port.
+- `apps/web` is a shell (router + dashboard + Redux Toolkit News flow); the remaining React surfaces are greenfield, not a partial port.
 - The bench deliberately measures caller-observed lag; its printed conclusion does not match its own numbers (pool p99 is worse than main thread). Fix the methodology before quoting it.
 - `.pre-commit-config.yaml` and `.devcontainer/` no longer exist; `scripts/pr-skill.py` remains the PR helper.

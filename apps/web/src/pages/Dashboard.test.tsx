@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "./Dashboard.tsx";
-import { ApiError } from "../api/client.js";
+import { HttpApiError } from "../api/client.js";
 
 vi.mock("../api/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/client.js")>()),
@@ -45,7 +45,7 @@ describe("Dashboard states", () => {
 
   it("pins the 502 branch and recovers through Try again", async () => {
     const getPriceTrend = await loadMock();
-    getPriceTrend.mockRejectedValueOnce(new ApiError(502, "Bad Gateway"));
+    getPriceTrend.mockRejectedValueOnce(new HttpApiError(502, "Bad Gateway"));
     getPriceTrend.mockResolvedValueOnce(series);
     render(<Dashboard />);
     await waitFor(() =>

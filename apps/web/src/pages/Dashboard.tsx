@@ -9,7 +9,7 @@ import {
   Skeleton,
 } from "@mui/material";
 import type { PriceTrend, TimeWindow } from "@chaintelescope/shared";
-import { ApiError, getPriceTrend, isTimeout } from "../api/client.js";
+import { HttpApiError, getPriceTrend, isTimeout } from "../api/client.js";
 import { priceFormat } from "../lib/format.ts";
 import {
   longDate,
@@ -46,8 +46,8 @@ export default function Dashboard(): JSX.Element {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        // No status duplication: ApiError.message is the status text only.
-        if (err instanceof ApiError) {
+        // HttpApiError carries the normalized server message and status.
+        if (err instanceof HttpApiError) {
           setState({
             status: "error",
             message: `API error ${err.status} (${err.message})`,
