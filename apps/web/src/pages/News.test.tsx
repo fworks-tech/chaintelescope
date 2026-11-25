@@ -1,9 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { configureStore } from "@reduxjs/toolkit";
+// oxlint-disable-next-line no-restricted-imports -- Provider is required by this component test.
+import { Provider } from "react-redux";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NewsItem } from "@chaintelescope/shared";
 import News from "./News.tsx";
 import { formatPublished, hostOf, isHttpUrl } from "../lib/news.ts";
-import { ApiError } from "../api/client.js";
+import { HttpApiError } from "../api/client.js";
+import { newsReducer } from "../store/news/newsSlice.js";
 
 vi.mock("../api/client.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/client.js")>()),
@@ -13,6 +18,22 @@ vi.mock("../api/client.js", async (importOriginal) => ({
 async function loadMock() {
   const client = await import("../api/client.js");
   return vi.mocked(client.getNews);
+}
+
+function renderNews(strict = false) {
+  const store = configureStore({ reducer: { news: newsReducer } });
+  const view = render(
+    <Provider store={store}>
+      {strict ? (
+        <StrictMode>
+          <News />
+        </StrictMode>
+      ) : (
+        <News />
+      )}
+    </Provider>,
+  );
+  return { ...view, store };
 }
 
 const items: NewsItem[] = [
@@ -42,7 +63,7 @@ describe("News states", () => {
   it("shows skeleton rows while fetching", async () => {
     const getNews = await loadMock();
     getNews.mockReturnValueOnce(new Promise(() => {}));
-    const { container, unmount } = render(<News />);
+    const { container, unmount } = renderNews();
     expect(
       screen.getByText("Loading the latest headlines…"),
     ).toBeInTheDocument();
@@ -53,7 +74,7 @@ describe("News states", () => {
   it("renders rows with hostname, date and links", async () => {
     const getNews = await loadMock();
     getNews.mockResolvedValueOnce(items);
-    render(<News />);
+    renderNews();
     await waitFor(() =>
       expect(screen.getByText("ETF flows rebound")).toBeInTheDocument(),
     );
@@ -78,7 +99,7 @@ describe("News states", () => {
         tags: [],
       },
     ]);
-    render(<News />);
+    renderNews();
     await waitFor(() =>
       expect(screen.getByText("Click me")).toBeInTheDocument(),
     );
@@ -89,23 +110,22 @@ describe("News states", () => {
   it("shows the empty state when the table is empty", async () => {
     const getNews = await loadMock();
     getNews.mockResolvedValueOnce([]);
-    render(<News />);
+    renderNews();
     await waitFor(() =>
-      expect(
-        screen.getByText("No news items available."),
-      ).toBeInTheDocument(),
+      expect(screen.getByText("No news items available.")).toBeInTheDocument(),
     );
   });
 
   it("pins the error branches and recovers through Try again", async () => {
     const getNews = await loadMock();
-    getNews.mockRejectedValueOnce(new ApiError(502, "Bad Gateway"));
+    getNews.mockRejectedValueOnce(new HttpApiError(502, "Bad Gateway"));
     getNews.mockResolvedValueOnce(items);
-    render(<News />);
+    renderNews();
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("News unavailable"),
     );
     expect(screen.getByRole("alert")).toHaveTextContent("API error 502");
+    expect(screen.getByRole("alert")).toHaveTextContent("http_error");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() =>
       expect(screen.getByText("ETF flows rebound")).toBeInTheDocument(),
@@ -115,7 +135,7 @@ describe("News states", () => {
   it("shows the unreachable branch for offline throws", async () => {
     const getNews = await loadMock();
     getNews.mockRejectedValueOnce(new TypeError("fetch failed"));
-    const { unmount } = render(<News />);
+    const { unmount } = renderNews();
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("API unreachable"),
     );
@@ -127,10 +147,58 @@ describe("News states", () => {
     getNews.mockRejectedValueOnce(
       new DOMException("The operation timed out", "TimeoutError"),
     );
-    render(<News />);
+    renderNews();
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("Request timed out"),
     );
+  });
+
+  it("aborts the in-flight request on unmount", async () => {
+    const getNews = await loadMock();
+    let signal: AbortSignal | undefined;
+    getNews.mockImplementationOnce(
+      (_watchlist, _limit, requestSignal) =>
+        new Promise(() => {
+          signal = requestSignal;
+        }),
+    );
+    const { unmount } = renderNews();
+    await waitFor(() => expect(signal).toBeDefined());
+
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("aborts a retry request on unmount", async () => {
+    const getNews = await loadMock();
+    const signals: AbortSignal[] = [];
+    getNews.mockImplementation((_watchlist, _limit, requestSignal) => {
+      if (requestSignal) signals.push(requestSignal);
+      if (signals.length === 1) {
+        return Promise.reject(new HttpApiError(502, "Bad Gateway"));
+      }
+      return new Promise(() => {});
+    });
+    const { unmount } = renderNews();
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(signals).toHaveLength(2));
+    unmount();
+
+    expect(signals[1]?.aborted).toBe(true);
+  });
+
+  it("renders safely under StrictMode", async () => {
+    const getNews = await loadMock();
+    getNews.mockResolvedValue(items);
+    renderNews(true);
+
+    await waitFor(() =>
+      expect(screen.getByText("ETF flows rebound")).toBeInTheDocument(),
+    );
+    expect(getNews).toHaveBeenCalled();
   });
 });
 

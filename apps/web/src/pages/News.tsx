@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from "react";
+import { useCallback, useEffect, useRef, type JSX } from "react";
 import {
   Alert,
   AlertTitle,
@@ -15,51 +15,53 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import type { NewsItem } from "@chaintelescope/shared";
-import { ApiError, getNews, isTimeout } from "../api/client.js";
+import type { ApiError } from "../api/client.js";
 import PageHeader from "../components/PageHeader.tsx";
 import { formatPublished, hostOf, isHttpUrl } from "../lib/news.ts";
+import { useAppDispatch, useAppSelector } from "../store/hooks.ts";
+import {
+  fetchNews,
+  selectAllNews,
+  selectNewsError,
+  selectNewsHasLoaded,
+  selectNewsStatus,
+} from "../store/news/newsSlice.js";
 
 /** Single source for the watchlist/limit on this screen. */
 const WATCHLIST = "BTC";
 const LIMIT = 10;
 
-type NewsState =
-  | { readonly status: "loading" }
-  | { readonly status: "ready"; readonly items: NewsItem[] }
-  | { readonly status: "error"; readonly message: string };
+function formatNewsError(error: ApiError): string {
+  if (error.status !== undefined) {
+    return `API error ${error.status} (${error.message}) [${error.code}]`;
+  }
+  return `${error.message} [${error.code}]`;
+}
 
 export default function News(): JSX.Element {
-  const [state, setState] = useState<NewsState>({ status: "loading" });
-  const [attempt, setAttempt] = useState(0);
+  const dispatch = useAppDispatch();
+  const status = useAppSelector(selectNewsStatus);
+  const items = useAppSelector(selectAllNews);
+  const error = useAppSelector(selectNewsError);
+  const hasLoaded = useAppSelector(selectNewsHasLoaded);
+  const activeRequest = useRef<{ abort: () => void } | null>(null);
+
+  const loadNews = useCallback(() => {
+    activeRequest.current?.abort();
+    activeRequest.current = dispatch(
+      fetchNews({ watchlist: WATCHLIST, limit: LIMIT }),
+    );
+  }, [dispatch]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    let cancelled = false;
-    getNews(WATCHLIST, LIMIT, controller.signal)
-      .then((items) => {
-        if (!cancelled) setState({ status: "ready", items });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        if (err instanceof ApiError) {
-          setState({
-            status: "error",
-            message: `API error ${err.status} (${err.message})`,
-          });
-        } else if (isTimeout(err)) {
-          setState({ status: "error", message: "Request timed out" });
-        } else {
-          setState({ status: "error", message: "API unreachable" });
-        }
-      });
+    loadNews();
     return () => {
-      cancelled = true;
-      controller.abort();
+      activeRequest.current?.abort();
+      activeRequest.current = null;
     };
-  }, [attempt]);
+  }, [loadNews]);
 
-  if (state.status === "error") {
+  if (status === "error" && error !== null) {
     return (
       <>
         <PageHeader
@@ -69,32 +71,22 @@ export default function News(): JSX.Element {
         <Alert
           severity="error"
           action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => {
-                setState({ status: "loading" });
-                setAttempt((n) => n + 1);
-              }}
-            >
+            <Button color="inherit" size="small" onClick={loadNews}>
               Try again
             </Button>
           }
         >
           <AlertTitle>News unavailable</AlertTitle>
-          {state.message}
+          {formatNewsError(error)}
         </Alert>
       </>
     );
   }
 
-  if (state.status === "loading") {
+  if (status === "loading" || (status === "idle" && !hasLoaded)) {
     return (
       <>
-        <PageHeader
-          title="News"
-          caption="Loading the latest headlines…"
-        />
+        <PageHeader title="News" caption="Loading the latest headlines…" />
         <Card>
           <CardContent>
             <Skeleton width="30%" height={22} />
@@ -114,7 +106,7 @@ export default function News(): JSX.Element {
         title="News"
         caption={`Normalized feed items for the ${WATCHLIST} watchlist with safe fallback when remote feeds are unavailable.`}
       />
-      {state.items.length === 0 ? (
+      {items.length === 0 ? (
         <Card>
           <CardContent>
             <Typography variant="h5" component="h2">
@@ -142,7 +134,7 @@ export default function News(): JSX.Element {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {state.items.map((item) => (
+                {items.map((item) => (
                   <TableRow key={item.id} hover>
                     <TableCell>{hostOf(item.source)}</TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -150,11 +142,7 @@ export default function News(): JSX.Element {
                     </TableCell>
                     <TableCell>
                       {isHttpUrl(item.url) ? (
-                        <Link
-                          href={item.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
+                        <Link href={item.url} target="_blank" rel="noreferrer">
                           {item.title}
                         </Link>
                       ) : (
