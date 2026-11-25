@@ -10,6 +10,7 @@ import {
   decodeCursor,
   encodeCursor,
   type ListScansQuery,
+  type ScanDto,
 } from "@chaintelescope/shared";
 import type { Plugin, Request, Server } from "@hapi/hapi";
 import { ScanArtifactsRepo } from "../db/repos/artifacts.js";
@@ -30,19 +31,6 @@ const TERMINAL: ReadonlySet<ScanStatus> = new Set([
   "failed",
   "cancelled",
 ]);
-
-export interface ScanDto {
-  readonly id: string;
-  readonly kind: ScanRow["kind"];
-  readonly status: ScanStatus;
-  readonly assetSymbol: string | null;
-  readonly contentHash: string | null;
-  readonly failureReason: string | null;
-  readonly durationMs: number | null;
-  readonly createdAt: string;
-  readonly startedAt: string | null;
-  readonly finishedAt: string | null;
-}
 
 function toDto(row: ScanRow): ScanDto {
   return {
