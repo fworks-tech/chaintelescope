@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { migrate } from "../src/db/migrate.js";
 import { AssetsRepo } from "../src/db/repos/assets.js";
-import { NewsRepo } from "../src/db/repos/news.js";
+import { NewsRepo, type NewsFilter } from "../src/db/repos/news.js";
 import { ScansRepo } from "../src/db/repos/scans.js";
 import { SnapshotsRepo } from "../src/db/repos/snapshots.js";
 import { withTx } from "../src/db/tx.js";
@@ -21,6 +21,8 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
   const handle = makeDb(DATABASE_URL ?? "");
   const scans = new ScansRepo(handle.db);
   const news = new NewsRepo(handle.db);
+  const listNews = (filter: NewsFilter) =>
+    news.list(filter, new Date("2026-11-24T12:00:00.000Z"));
   const assets = new AssetsRepo(handle.db);
 
   beforeAll(async () => {
@@ -86,7 +88,7 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
       {
         title: "ETF flows rebound",
         url: "https://example.com/etf",
-        source: "https://www.coindesk.com/rss",
+        source: "https://www.sec.gov/news/pressreleases.rss",
         tags: ["BTC"],
         publishedAt: "2026-10-26T12:00:00.000Z",
       },
@@ -96,7 +98,7 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
       {
         title: "Layer-1 activity rotates",
         url: "https://example.com/l1",
-        source: "https://cointelegraph.com/rss",
+        source: "https://www.sec.gov/news/pressreleases.rss",
         tags: ["SOL"],
         publishedAt: "2026-10-27T12:00:00.000Z",
       },
@@ -106,14 +108,14 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
       {
         title: "Local weather",
         url: "https://example.com/weather",
-        source: "https://example.com/rss",
+        source: "https://www.sec.gov/news/pressreleases.rss",
         tags: [],
         publishedAt: "2026-10-28T12:00:00.000Z",
       },
       news,
     );
 
-    const all = await news.list({ assets: [], limit: 10 });
+    const all = await listNews({ assets: [], limit: 10 });
     expect(all.map((row) => row.title)).toEqual([
       "Local weather",
       "Layer-1 activity rotates",
@@ -121,17 +123,32 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
     ]);
 
     expect(
-      await news.list({ assets: ["BTC"], limit: 10 }),
+      await listNews({ assets: ["BTC"], limit: 10 }),
     ).toHaveLength(1);
     expect(
-      (await news.list({ assets: ["sol"], limit: 10 }))[0]?.title,
+      (await listNews({ assets: ["sol"], limit: 10 }))[0]?.title,
     ).toBe("Layer-1 activity rotates");
     expect(
-      await news.list({ assets: ["MISSING"], limit: 10 }),
+      await listNews({ assets: ["MISSING"], limit: 10 }),
     ).toHaveLength(0);
     expect(
-      await news.list({ assets: [], limit: 2 }),
+      await listNews({ assets: [], limit: 2 }),
     ).toHaveLength(2);
+  });
+
+  test("news list hides sources without approved rights", async () => {
+    await ingestNewsItem(
+      {
+        title: "Unapproved source",
+        url: "https://example.com/unapproved",
+        source: "https://cointelegraph.com/rss",
+        tags: ["BTC"],
+        publishedAt: "2026-10-30T12:00:00.000Z",
+      },
+      news,
+    );
+
+    expect(await listNews({ assets: [], limit: 10 })).toEqual([]);
   });
 
   test("news list matches title substrings and escapes LIKE wildcards", async () => {
@@ -139,7 +156,7 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
       {
         title: "100% rally on ETF flows",
         url: "https://example.com/rally",
-        source: "https://example.com/rss",
+        source: "https://www.sec.gov/news/pressreleases.rss",
         tags: [],
         publishedAt: "2026-10-29T12:00:00.000Z",
       },
@@ -148,20 +165,20 @@ describe.skipIf(!DATABASE_URL)("typed query layer", () => {
 
     // Substring in the title matches even with no tag hit.
     expect(
-      await news.list({ assets: ["rally"], limit: 10 }),
+      await listNews({ assets: ["rally"], limit: 10 }),
     ).toHaveLength(1);
     // A literal % never acts as a wildcard.
     expect(
-      await news.list({ assets: ["100%"], limit: 10 }),
+      await listNews({ assets: ["100%"], limit: 10 }),
     ).toHaveLength(1);
     expect(
-      await news.list({ assets: ["100"], limit: 10 }),
+      await listNews({ assets: ["100"], limit: 10 }),
     ).toHaveLength(1);
   });
 
   test("news list on an empty table returns no rows", async () => {
-    expect(await news.list({ assets: [], limit: 10 })).toEqual([]);
-    expect(await news.list({ assets: ["BTC"], limit: 10 })).toEqual([]);
+    expect(await listNews({ assets: [], limit: 10 })).toEqual([]);
+    expect(await listNews({ assets: ["BTC"], limit: 10 })).toEqual([]);
   });
 
   test("claimBatch hands each pending scan to exactly one caller", async () => {

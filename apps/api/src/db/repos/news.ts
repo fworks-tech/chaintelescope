@@ -3,6 +3,7 @@
  * @module api/db/repos/news
  */
 
+import { approvedNewsSourceFeedUrls } from "@chaintelescope/shared";
 import { sql, type Kysely } from "kysely";
 import type { DB } from "../schema.js";
 import type { IngestResult } from "../types.js";
@@ -70,10 +71,14 @@ export class NewsRepo {
    * Últimas notícias filtradas por watchlist, mais recentes primeiro.
    * Tabela vazia (job ainda não rodou) retorna `[]` — estado válido, não 404.
    */
-  async list(filter: NewsFilter) {
+  async list(filter: NewsFilter, now: Date = new Date()) {
+    const approvedSources = approvedNewsSourceFeedUrls(now);
+    if (approvedSources.length === 0) return [];
+
     let query = this.db
       .selectFrom("news_items")
       .select(["id", "source", "tags", "title", "url", "published_at"])
+      .where("source", "in", approvedSources)
       .orderBy("published_at", "desc")
       .limit(filter.limit);
 

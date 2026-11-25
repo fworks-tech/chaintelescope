@@ -30,13 +30,25 @@ When credentials are missing or provider calls fail, the assistant returns a loc
 
 `auto` tries Binance, then CoinGecko, then Coinbase, then mock series from `apps/python/src/data/mock_market.py`. Exchange access goes through `ccxt` when it is installed; otherwise the built-in `httpx` fallback serves the same providers (slim/serverless installs have no `ccxt`).
 
-## News feeds
+## News sources
 
-| Variable         | Required | Default                                 | Purpose                       |
-| ---------------- | -------- | --------------------------------------- | ----------------------------- |
-| `NEWS_FEED_URLS` | No       | CoinDesk and Cointelegraph RSS defaults | Comma-separated RSS/Atom URLs |
+News sources are versioned in `packages/shared/src/news-sources.ts` and generated
+into `apps/python/src/data/news/sources.generated.json`. The Python job reads
+only enabled sources with approved automation/metadata rights and a current
+review date. `NEWS_FEED_URLS` is no longer read and cannot bypass the registry.
+The Node `NewsRepo` applies the same approved-source gate when reading existing
+rows, so denied sources are hidden without deleting data. The Python process
+caches successful feeds for their registered interval, serializes concurrent
+misses, and backs off failed feeds for five minutes, serving stale cache when
+available.
 
-When feeds are unreachable or empty, the app uses normalized fallback items so the News page and dashboard snapshot still render.
+The only enabled automatic source in the initial registry is the SEC RSS feed.
+Federal Register and CoinGecko remain disabled until their adapters ship.
+Cointelegraph is denied without written permission; CoinDesk awaits rights
+review. See [editorial/news-sources.md](editorial/news-sources.md).
+
+When feeds are unreachable or empty, the local Python UI may use normalized
+fallback items. The scheduled writer never persists mock rows.
 
 ## Newsletter persistence and delivery
 
@@ -56,7 +68,6 @@ Runtime newsletter files live under `data/` at the repository root by default. T
 
 ```env
 MARKET_PROVIDER=auto
-NEWS_FEED_URLS=https://www.coindesk.com/arc/outboundfeeds/rss/,https://cointelegraph.com/rss
 NEWSLETTER_DATA_DIR=data
 NEWSLETTER_PROVIDER=stub
 ```

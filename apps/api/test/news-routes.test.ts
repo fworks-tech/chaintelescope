@@ -8,7 +8,7 @@ describe("toNewsItem", () => {
     expect(
       toNewsItem({
         id: "11111111-1111-4111-8111-111111111111",
-        source: "https://www.coindesk.com/rss",
+        source: "https://www.sec.gov/news/pressreleases.rss",
         tags: ["btc"],
         title: "ETF flows rebound",
         url: "https://example.com/etf",
@@ -19,7 +19,7 @@ describe("toNewsItem", () => {
       }),
     ).toEqual({
       id: "11111111-1111-4111-8111-111111111111",
-      source: "https://www.coindesk.com/rss",
+      source: "https://www.sec.gov/news/pressreleases.rss",
       publishedAt: "2026-10-26T12:00:00.000Z",
       title: "ETF flows rebound",
       url: "https://example.com/etf",

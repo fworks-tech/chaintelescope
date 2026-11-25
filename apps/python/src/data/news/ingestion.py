@@ -1,8 +1,9 @@
 import email.utils
 import hashlib
-import os
+import time
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
+from threading import Lock
 
 import httpx
 from defusedxml.ElementTree import fromstring as safe_fromstring
@@ -10,6 +11,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from src.data.mock_market import news_snapshot
 from src.data.news.models import FeedItem
+from src.data.news.sources import poll_interval_minutes, rss_feed_urls
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
 
@@ -18,11 +20,6 @@ ATOM_NS = "http://www.w3.org/2005/Atom"
 MAX_FEED_BYTES = 5_000_000
 
 load_dotenv()
-
-DEFAULT_FEEDS = [
-    "https://www.coindesk.com/arc/outboundfeeds/rss/",
-    "https://cointelegraph.com/rss",
-]
 
 FALLBACK_ITEMS = [
     FeedItem(
@@ -53,10 +50,7 @@ FALLBACK_ITEMS = [
 
 
 def _feed_urls():
-    configured = os.getenv("NEWS_FEED_URLS", "")
-    if configured.strip():
-        return [url.strip() for url in configured.split(",") if url.strip()]
-    return DEFAULT_FEEDS
+    return list(rss_feed_urls())
 
 
 def _item_id(source: str, title: str, url: str) -> str:
@@ -69,10 +63,14 @@ def _parse_date(date_str: str, is_atom: bool) -> datetime:
         return datetime.now(UTC)
     try:
         if is_atom:
-            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return email.utils.parsedate_to_datetime(date_str)
+            parsed = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        else:
+            parsed = email.utils.parsedate_to_datetime(date_str)
     except (ValueError, TypeError):
         return datetime.now(UTC)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _parse_atom_entry(entry: ET.Element, source: str) -> FeedItem | None:
@@ -134,6 +132,40 @@ def _parse_feed(url: str) -> list[FeedItem]:
     return [item for entry in entries if (item := parser(entry, url)) is not None]
 
 
+_FEED_CACHE: dict[str, tuple[float, list[FeedItem]]] = {}
+_FEED_FAILURES: dict[str, float] = {}
+_FEED_LOCKS: dict[str, Lock] = {}
+_FEED_LOCKS_GUARD = Lock()
+_FEED_FAILURE_BACKOFF_SECONDS = 300
+
+
+def _feed_lock(url: str) -> Lock:
+    with _FEED_LOCKS_GUARD:
+        return _FEED_LOCKS.setdefault(url, Lock())
+
+
+def _cached_parse_feed(url: str) -> list[FeedItem]:
+    with _feed_lock(url):
+        now = time.monotonic()
+        cached = _FEED_CACHE.get(url)
+        if cached is not None and now - cached[0] < poll_interval_minutes(url) * 60:
+            return cached[1]
+        failed_at = _FEED_FAILURES.get(url)
+        if failed_at is not None and now - failed_at < _FEED_FAILURE_BACKOFF_SECONDS:
+            return cached[1] if cached is not None else []
+        try:
+            items = _parse_feed(url)
+        except Exception as exc:
+            _FEED_FAILURES[url] = now
+            if cached is not None:
+                logger.warning("Feed parse failed for {}: {}; serving stale cache", url, exc)
+                return cached[1]
+            raise
+        _FEED_FAILURES.pop(url, None)
+        _FEED_CACHE[url] = (time.monotonic(), items)
+        return items
+
+
 def _dedupe_items(items: list[FeedItem]) -> list[FeedItem]:
     seen = set()
     deduped = []
@@ -165,7 +197,7 @@ def load_news_items(watchlist: list[str] | None = None) -> list[FeedItem]:
     collected: list[FeedItem] = []
     for url in _feed_urls():
         try:
-            collected.extend(_parse_feed(url))
+            collected.extend(_cached_parse_feed(url))
         except Exception as exc:
             logger.warning("Feed parse failed for {}: {}", url, exc)
             continue

@@ -80,7 +80,8 @@ Python:
 
 ## Config & secrets
 
-- Python: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWS_FEED_URLS`, `NEWSLETTER_*`, `CORS_ORIGINS`. See `docs/configuration.md`.
+- Python UI: Streamlit secrets → env vars → defaults. Real vars read: `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`, `NEWSLETTER_*`, `CORS_ORIGINS`. News sources come from the rights-gated generated registry, not `NEWS_FEED_URLS`. See `docs/configuration.md`.
+- Python news job: reads `DATABASE_URL` or `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE`; ECS injects the `PG*` secrets. Sources come from the same rights-gated registry.
 - Node: validated once in `apps/api/src/env.ts` (`NODE_ENV`, `HOST`, `PORT`, `DATABASE_URL` or `PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`/`PGDATABASE` parts, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL_DAYS`, `ARGON2_PEPPER`, `SCAN_DAEMON_ENABLED`, `SCAN_POLL_INTERVAL_MS`, `SCAN_CONCURRENCY`, `CORS_ORIGINS`, `MARKET_PROVIDER`, `MARKET_REQUEST_TIMEOUT_SECONDS`). Nothing loads `.env` automatically — use `node --env-file`.
 - Never commit `.env`, `.streamlit/secrets.toml`, or real peppers/JWT secrets.
 - The model is written down: `docs/security/threat-model.md` (assets, boundaries, attacks, OWASP mapping) and `docs/security/secrets.md` (every variable above, rotation, leak impact). Read them before adding a secret or an outbound integration.
@@ -108,7 +109,7 @@ Python:
 - `scans.asset_symbol` has no FK to `assets` on purpose: scans outlive the asset registry, and #114's coverage query is what surfaces orphaned symbols.
 - `POST /scans` requires a bearer token and records the subject as `requestor`; `GET`/cancel also require a token, and `DELETE` requires the `admin` scope. It streams `application/octet-stream` into `scanStream`, then persists the scan and artifact; the row goes `pending -> running -> completed` inside the request because a synchronous upload has no daemon to claim it. `scan_artifacts.content_hash` is globally unique, so re-uploading the same bytes reuses the first artifact row (the second scan has no artifact of its own). Newsletter subscription stays public.
 - `GET /scans` paginates on the opaque cursor from `packages/shared/src/cursor.ts` (base64url of `{createdAt, id}`); an invalid cursor is 400 `invalid_cursor`, an id that is not a UUID is 404 `scan_not_found` instead of a Postgres 22P02.
-- `news` routes are deliberately absent: the news ingest has no scheduler. `GET /api/snapshot` returns 503 until non-market deps land in #122 (the market provider chain itself is ported — see `market.ts`). `POST /newsletter/subscribe` uses `newsletter_subscriptions` (0009) so duplicate e-mail is a 409 from the unique index.
+- `GET /api/news` serves the scheduled Python ingest from `news_items`; sources are rights-gated by `packages/shared/src/news-sources.ts`. `GET /api/snapshot` returns 503 until non-market deps land in #122 (the market provider chain itself is ported — see `market.ts`). `POST /newsletter/subscribe` uses `newsletter_subscriptions` (0009) so duplicate e-mail is a 409 from the unique index.
 - `kysely` is pinned to `^0.28` because 0.29+ declares `engines.node >= 22`; the repo, `.nvmrc` and CI target Node 20. Moving to Node 22 (then kysely 0.29) is a separate chore.
 - `ScansRepo.list` paginates on the tuple `(created_at, id)` — a timestamp-only cursor silently drops rows that share an instant.
 - `hapi-pino` is registered in `buildServer` (`silent` in tests); it redacts `authorization`, `cookie` and `set-cookie`. `request.log` reaches the destination from there.

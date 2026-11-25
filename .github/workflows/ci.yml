@@ -131,6 +131,12 @@ jobs:
           node scripts/sync-asset-registry.mjs
           git diff --exit-code -- apps/python/src/data/registry.generated.json
 
+      - name: News source registry is up to date
+        run: |
+          pnpm test:news-sources
+          pnpm sync:news-sources
+          git diff --exit-code -- apps/python/src/data/news/sources.generated.json
+
   python-app:
     name: Python app
     runs-on: ubuntu-latest

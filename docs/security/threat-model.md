@@ -1,8 +1,10 @@
 # Threat model
 
-Scope: the TypeScript API (`apps/api`) and the PostgreSQL schema it owns. The
-Python/Streamlit app is frozen and not modelled here; it has no credentials
-store and never talks to the new auth tables.
+Scope: the TypeScript API (`apps/api`), the PostgreSQL schema it owns, the
+scheduled Python news writer, and the shared `load_news_items()` path used by
+the Python web runtimes. The Python UI's newsletter store and assistant keys
+remain outside this model; news ingestion is included because it crosses
+external source boundaries and the writer holds a database secret.
 
 This is a lightweight model for a small service, not a formal assessment. The
 goal is that every control has a named attack it stops and every gap is a
@@ -17,6 +19,7 @@ decision.
 | Access tokens          | 15-minute impersonation, including `admin` scope  | client memory; never persisted server-side                           |
 | Uploaded artifacts     | User data and scan contents                       | `scan_artifacts` metadata; bytes are streamed and hashed, not stored |
 | Newsletter subscribers | PII (e-mail, preferences)                         | `newsletter_subscriptions`                                           |
+| News source content     | Licensed metadata/links; untrusted feed text       | `news_items`, source registry                                        |
 | Secrets                | Database access, token forgery, password cracking | process environment                                                  |
 
 ## Trust boundaries
@@ -25,7 +28,10 @@ decision.
 browser ──HTTPS──▶ API process ──TCP──▶ PostgreSQL
                         │
                         └── market providers (binance, coingecko, coinbase; public HTTPS APIs)
-operator ──environment──▶ API process
+operator ──environment──▶ API process / Python news job
+Python news job ──HTTPS──▶ rights-approved sources
+        │
+        └──TCP──▶ PostgreSQL (shared DB credential; app writes only news_items)
 ```
 
 | Boundary           | Control                                                                          | Code / issue                                                     |
@@ -33,7 +39,10 @@ operator ──environment──▶ API process
 | Browser → API      | CORS allowlist, `SameSite=Strict` refresh cookie, JWT bearer auth, OWASP headers | `plugins/secure-headers.ts`, `env.ts`, `auth/strategy.ts` (#121) |
 | Browser → API      | Request shape and size limits (50 MiB, Joi contracts)                            | `plugins/validation.ts`, `routes/scans.ts` (#117, #122)          |
 | API → PostgreSQL   | Kysely parameter binding, SQL confined to `src/db/`, app-level state transitions | `db/*`, `scans/state-machine.ts` (#111, #114)                    |
-| Operator → process | Boot-time validation, no `.env` loading, redacted logs                           | `env.ts`, `server.ts` (#118)                                     |
+| Operator → Node API | Boot-time validation, no `.env` loading, redacted logs                           | `env.ts`, `server.ts` (#118)                                     |
+| Operator → Python job | ECS injects `PG*` secrets; local runs may load `.env` via `python-dotenv`       | `apps/python/src/data/news/writer.py`, `ingestion.py`             |
+| Python job → sources | Rights-approved registry only; no env override; review expiry disables access | `packages/shared/src/news-sources.ts`, ADR-0011                  |
+| Python job → Postgres | Parameterized writes, content-hash dedupe, mock rows rejected                  | `apps/python/src/data/news/writer.py`                             |
 
 ## STRIDE-lite
 
@@ -89,7 +98,7 @@ default-src 'none'; frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff` 
 | A07 Identification and Authentication Failures | Argon2id, uniform login errors, throttling, short JWT, rotation/reuse detection                                                                             | Covered                                                                                                |
 | A08 Software and Data Integrity Failures       | Lockfile + reviewed install scripts (`allowBuilds`); no artifact signing                                                                                    | Out of scope for M4                                                                                    |
 | A09 Security Logging and Monitoring Failures   | Structured pino logs with request ids, `refresh_token_reuse` and internal-error events; no SIEM/alerting                                                    | Out of scope for M4                                                                                    |
-| A10 Server-Side Request Forgery                | Outbound market fetches use fixed provider hosts; `asset` is Joi-validated to `^[A-Z0-9]{1,20}$`; CoinGecko uses a fixed ID map; no user-supplied URL fetch | Covered for market; revisit when news/feed URL fetchers land                                           |
+| A10 Server-Side Request Forgery                | Outbound market fetches use fixed provider hosts; news sources come from the rights-gated registry; no user-supplied URL fetch              | **Partial** — feed redirect/private-IP checks land with ingest hardening                                             |
 
 ## Non-goals (decisions, not oversights)
 
@@ -107,8 +116,8 @@ default-src 'none'; frame-ancestors 'none'`, `X-Frame-Options: DENY`, `nosniff` 
 - **Immutable audit trail.** `refresh_token_reuse` and 5xx logs are events, not
   a tamper-evident table.
 - **Dependency scanning.** No `pnpm audit`/Dependabot gate yet (A06 gap).
-- **Python app.** Its `NEWSLETTER_*`, provider keys and file-backed store are
-  outside this model.
+- **Python/Streamlit UI.** Its local newsletter store and assistant keys are
+  outside this model. The scheduled Python news writer is in scope.
 
 ## References
 
