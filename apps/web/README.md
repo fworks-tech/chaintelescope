@@ -6,6 +6,8 @@ page by page. Stack decision and styling rules live in
 
 ## Run
 
+From the repository root:
+
 ```bash
 pnpm install
 pnpm build:shared          # packages/shared must be built before the app typechecks

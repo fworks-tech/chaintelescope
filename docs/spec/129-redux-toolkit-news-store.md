@@ -1,6 +1,6 @@
 # Spec: Redux Toolkit News Store Foundation
 
-> Status: In progress — first vertical slice of [#129](https://github.com/fworks-tech/chaintelescope/issues/129).
+> Status: Implemented News slice; #129 remains open for the remaining store work.
 
 ## Problem
 
