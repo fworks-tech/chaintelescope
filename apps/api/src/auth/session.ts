@@ -5,6 +5,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import type { AuthSessionResponse, AuthUser } from "@chaintelescope/shared";
 import {
   BadRequestError,
   ConflictError,
@@ -29,18 +30,11 @@ const MIN_PASSWORD_LENGTH = 12;
 const MAX_PASSWORD_LENGTH = 128;
 const DAY_MS = 86_400_000;
 
-export interface PublicUser {
-  readonly id: string;
-  readonly email: string;
-  readonly role: "user" | "admin";
-}
+export type PublicUser = AuthUser;
 
-export interface IssuedSession {
-  readonly accessToken: string;
-  readonly expiresIn: number;
+export interface IssuedSession extends AuthSessionResponse {
   /** Em claro, para o cookie; o banco só guarda o sha256. */
   readonly refreshToken: string;
-  readonly user: PublicUser;
 }
 
 export interface RegisterInput {

@@ -6,6 +6,7 @@
 
 import {
   NewsletterSubscriptionSchema,
+  type NewsletterSubscription,
   type NewsletterSubscriptionPayload,
 } from "@chaintelescope/shared";
 import type { Plugin, Server } from "@hapi/hapi";
@@ -36,15 +37,14 @@ export const newsletterPlugin: Plugin<void> = {
           );
         }
 
-        return h
-          .response({
-            id: subscription.id,
-            email: subscription.email,
-            frequency: subscription.frequency,
-            format: subscription.format,
-            createdAt: subscription.created_at.toISOString(),
-          })
-          .code(201);
+        const response: NewsletterSubscription = {
+          id: subscription.id,
+          email: subscription.email,
+          frequency: subscription.frequency,
+          format: subscription.format,
+          createdAt: subscription.created_at.toISOString(),
+        };
+        return h.response(response).code(201);
       },
     });
   },

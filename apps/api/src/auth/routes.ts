@@ -7,6 +7,7 @@
 import {
   LoginPayloadSchema,
   RegisterPayloadSchema,
+  type AuthSessionResponse,
   type LoginPayload,
   type RegisterPayload,
 } from "@chaintelescope/shared";
@@ -149,11 +150,12 @@ function issue(
   issued: Awaited<ReturnType<AuthSession["login"]>>,
   cookie: ServerStateCookieOptions,
 ) {
+  const response: AuthSessionResponse = {
+    accessToken: issued.accessToken,
+    expiresIn: issued.expiresIn,
+    user: issued.user,
+  };
   return h
-    .response({
-      accessToken: issued.accessToken,
-      expiresIn: issued.expiresIn,
-      user: issued.user,
-    })
+    .response(response)
     .state(REFRESH_COOKIE, issued.refreshToken, cookie);
 }
