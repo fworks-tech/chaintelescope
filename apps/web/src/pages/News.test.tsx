@@ -26,7 +26,7 @@ function renderNews(strict = false) {
     reducer: {
       news: newsReducer,
       scans: scansReducer,
-      upload: uploadProgressReducer,
+      uploadProgress: uploadProgressReducer,
     },
   });
   const view = render(

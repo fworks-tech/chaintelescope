@@ -2,6 +2,7 @@ import {
   createAsyncThunk,
   createEntityAdapter,
   createSlice,
+  type Draft,
 } from "@reduxjs/toolkit";
 import type { ScanDto, ScanListResponse } from "@chaintelescope/shared";
 import type { ScanStatus } from "@chaintelescope/shared";
@@ -96,25 +97,61 @@ export const createScan = createAsyncThunk<
 
 const scansAdapter = createEntityAdapter<ScanDto>();
 
+type ScanOp = "list" | "detail" | "cancel" | "create";
+
 type ScansState = ReturnType<typeof scansAdapter.getInitialState> & {
   readonly status: "idle" | "loading" | "error";
   readonly error: ApiError | null;
-  readonly requestId: string | null;
   readonly hasLoaded: boolean;
   readonly nextCursor: string | null;
+  readonly activeOps: Record<ScanOp, string | null>;
 };
 
 const initialState: ScansState = {
   ...scansAdapter.getInitialState(),
   status: "idle",
   error: null,
-  requestId: null,
   hasLoaded: false,
   nextCursor: null,
+  activeOps: { list: null, detail: null, cancel: null, create: null },
 };
 
-function isStale(state: ScansState, requestId: string): boolean {
-  return state.requestId !== requestId;
+function isOpActive(state: Draft<ScansState>): boolean {
+  return Object.values(state.activeOps).some((id) => id !== null);
+}
+
+function startOp(
+  state: Draft<ScansState>,
+  op: ScanOp,
+  requestId: string,
+): void {
+  state.status = "loading";
+  state.error = null;
+  state.activeOps[op] = requestId;
+}
+
+// RTK derives meta.aborted from the thunk signal, so an AbortError caught
+// into rejectValue still resets without an error — do not branch on payload.
+function settleOp(state: Draft<ScansState>, op: ScanOp): void {
+  state.activeOps[op] = null;
+  if (!isOpActive(state)) state.status = "idle";
+}
+
+function failOp(
+  state: Draft<ScansState>,
+  op: ScanOp,
+  requestId: string,
+  aborted: boolean,
+  error: ApiError | undefined,
+): void {
+  if (state.activeOps[op] !== requestId) return;
+  state.activeOps[op] = null;
+  if (aborted) {
+    if (!isOpActive(state)) state.status = "idle";
+    return;
+  }
+  state.status = "error";
+  state.error = error ?? { code: "network", message: "API unreachable" };
 }
 
 const scansSlice = createSlice({
@@ -124,118 +161,91 @@ const scansSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchScans.pending, (state, action) => {
-        state.status = "loading";
-        state.error = null;
-        state.requestId = action.meta.requestId;
+        startOp(state, "list", action.meta.requestId);
       })
       .addCase(fetchScans.fulfilled, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
+        if (state.activeOps.list !== action.meta.requestId) return;
         if (action.payload.append) {
-          scansAdapter.addMany(state, action.payload.items);
+          scansAdapter.upsertMany(state, action.payload.items);
         } else {
           scansAdapter.setAll(state, action.payload.items);
         }
         state.nextCursor = action.payload.nextCursor;
-        state.status = "idle";
         state.error = null;
-        state.requestId = null;
         state.hasLoaded = true;
+        settleOp(state, "list");
       })
       .addCase(fetchScans.rejected, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
-        state.requestId = null;
-        if (action.meta.aborted) {
-          state.status = "idle";
-          return;
-        }
-        state.status = "error";
-        state.error = action.payload ?? {
-          code: "network",
-          message: "API unreachable",
-        };
+        failOp(
+          state,
+          "list",
+          action.meta.requestId,
+          action.meta.aborted,
+          action.payload,
+        );
       })
       .addCase(fetchScan.pending, (state, action) => {
-        state.status = "loading";
-        state.error = null;
-        state.requestId = action.meta.requestId;
+        startOp(state, "detail", action.meta.requestId);
       })
       .addCase(fetchScan.fulfilled, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
+        if (state.activeOps.detail !== action.meta.requestId) return;
         scansAdapter.upsertOne(state, action.payload);
-        state.status = "idle";
         state.error = null;
-        state.requestId = null;
         state.hasLoaded = true;
+        settleOp(state, "detail");
       })
       .addCase(fetchScan.rejected, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
-        state.requestId = null;
-        if (action.meta.aborted) {
-          state.status = "idle";
-          return;
-        }
-        state.status = "error";
-        state.error = action.payload ?? {
-          code: "network",
-          message: "API unreachable",
-        };
+        failOp(
+          state,
+          "detail",
+          action.meta.requestId,
+          action.meta.aborted,
+          action.payload,
+        );
       })
       .addCase(cancelScan.pending, (state, action) => {
-        state.status = "loading";
-        state.error = null;
-        state.requestId = action.meta.requestId;
+        startOp(state, "cancel", action.meta.requestId);
       })
       .addCase(cancelScan.fulfilled, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
-        const existing = state.entities[action.payload];
-        if (existing !== undefined) {
+        if (state.activeOps.cancel !== action.meta.requestId) return;
+        // 202 means the server row is cancelled; unknown ids 404, so a
+        // fulfilled cancel for a locally absent id is a no-op by design.
+        if (state.entities[action.payload] !== undefined) {
           scansAdapter.updateOne(state, {
             id: action.payload,
             changes: { status: "cancelled" },
           });
         }
-        state.status = "idle";
         state.error = null;
-        state.requestId = null;
+        settleOp(state, "cancel");
       })
       .addCase(cancelScan.rejected, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
-        state.requestId = null;
-        if (action.meta.aborted) {
-          state.status = "idle";
-          return;
-        }
-        state.status = "error";
-        state.error = action.payload ?? {
-          code: "network",
-          message: "API unreachable",
-        };
+        failOp(
+          state,
+          "cancel",
+          action.meta.requestId,
+          action.meta.aborted,
+          action.payload,
+        );
       })
       .addCase(createScan.pending, (state, action) => {
-        state.status = "loading";
-        state.error = null;
-        state.requestId = action.meta.requestId;
+        startOp(state, "create", action.meta.requestId);
       })
       .addCase(createScan.fulfilled, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
+        if (state.activeOps.create !== action.meta.requestId) return;
         scansAdapter.upsertOne(state, action.payload);
-        state.status = "idle";
         state.error = null;
-        state.requestId = null;
         state.hasLoaded = true;
+        settleOp(state, "create");
       })
       .addCase(createScan.rejected, (state, action) => {
-        if (isStale(state, action.meta.requestId)) return;
-        state.requestId = null;
-        if (action.meta.aborted) {
-          state.status = "idle";
-          return;
-        }
-        state.status = "error";
-        state.error = action.payload ?? {
-          code: "network",
-          message: "API unreachable",
-        };
+        failOp(
+          state,
+          "create",
+          action.meta.requestId,
+          action.meta.aborted,
+          action.payload,
+        );
       });
   },
 });

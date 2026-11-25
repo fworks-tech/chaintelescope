@@ -20,16 +20,6 @@ const uploadProgressSlice = createSlice({
   name: "uploadProgress",
   initialState,
   reducers: {
-    startUpload: (
-      state,
-      action: PayloadAction<{ requestId: string }>,
-    ): UploadProgressState => ({
-      ...state,
-      requestId: action.payload.requestId,
-      fraction: 0,
-      status: "uploading",
-      error: null,
-    }),
     setUploadProgress: (
       state,
       action: PayloadAction<{ requestId: string; fraction: number }>,
@@ -50,7 +40,13 @@ const uploadProgressSlice = createSlice({
       }))
       .addCase(createScan.fulfilled, (state, action) => {
         if (state.requestId !== action.meta.requestId) return state;
-        return { ...state, requestId: null, fraction: 1, status: "idle" };
+        return {
+          ...state,
+          requestId: null,
+          fraction: 1,
+          status: "idle",
+          error: null,
+        };
       })
       .addCase(createScan.rejected, (state, action) => {
         if (state.requestId !== action.meta.requestId) return state;
@@ -70,16 +66,18 @@ const uploadProgressSlice = createSlice({
   },
 });
 
-export const { startUpload, setUploadProgress, resetUpload } =
-  uploadProgressSlice.actions;
+export const { setUploadProgress, resetUpload } = uploadProgressSlice.actions;
 export const uploadProgressReducer = uploadProgressSlice.reducer;
 
-const selectUploadState = (state: { upload: UploadProgressState }) =>
-  state.upload;
+const selectUploadState = (state: { uploadProgress: UploadProgressState }) =>
+  state.uploadProgress;
 
-export const selectUploadStatus = (state: { upload: UploadProgressState }) =>
-  selectUploadState(state).status;
-export const selectUploadFraction = (state: { upload: UploadProgressState }) =>
-  selectUploadState(state).fraction;
-export const selectUploadError = (state: { upload: UploadProgressState }) =>
-  selectUploadState(state).error;
+export const selectUploadStatus = (state: {
+  uploadProgress: UploadProgressState;
+}) => selectUploadState(state).status;
+export const selectUploadFraction = (state: {
+  uploadProgress: UploadProgressState;
+}) => selectUploadState(state).fraction;
+export const selectUploadError = (state: {
+  uploadProgress: UploadProgressState;
+}) => selectUploadState(state).error;

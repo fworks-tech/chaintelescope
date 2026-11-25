@@ -108,6 +108,62 @@ describe("scans store", () => {
     expect(selectScansNextCursor(store.getState())).toBeNull();
   });
 
+  it("merges overlapping rows on cursor pages", async () => {
+    const { listScans } = await loadMocks();
+    listScans
+      .mockResolvedValueOnce({
+        items: [makeScan({ id: "scan-1", status: "running" })],
+        nextCursor: "cursor-2",
+      })
+      .mockResolvedValueOnce({
+        items: [
+          makeScan({ id: "scan-1", status: "completed" }),
+          makeScan({ id: "scan-2" }),
+        ],
+        nextCursor: null,
+      });
+    const store = makeStore();
+
+    await store.dispatch(fetchScans({ token: "bearer-123" }));
+    await store.dispatch(
+      fetchScans({ token: "bearer-123", cursor: "cursor-2" }),
+    );
+
+    expect(selectScanById(store.getState(), "scan-1")?.status).toBe(
+      "completed",
+    );
+    expect(selectAllScans(store.getState()).map((s) => s.id)).toEqual([
+      "scan-1",
+      "scan-2",
+    ]);
+  });
+
+  it("keeps list data when a detail request settles first", async () => {
+    const { listScans, getScan } = await loadMocks();
+    let resolveList!: (value: {
+      items: ScanDto[];
+      nextCursor: string | null;
+    }) => void;
+    listScans.mockReturnValueOnce(
+      new Promise((done) => {
+        resolveList = done;
+      }),
+    );
+    getScan.mockResolvedValueOnce(makeScan({ id: "detail-1" }));
+    const store = makeStore();
+
+    const listRequest = store.dispatch(fetchScans({ token: "bearer-123" }));
+    await store.dispatch(fetchScan({ id: "detail-1", token: "bearer-123" }));
+    resolveList({ items: [makeScan({ id: "list-1" })], nextCursor: null });
+    await listRequest;
+
+    expect(selectAllScans(store.getState()).map((s) => s.id)).toContain(
+      "list-1",
+    );
+    expect(selectScansStatus(store.getState())).toBe("idle");
+    expect(selectScansError(store.getState())).toBeNull();
+  });
+
   it("stores the typed API error on rejection", async () => {
     const { listScans } = await loadMocks();
     listScans.mockRejectedValueOnce(

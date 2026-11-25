@@ -7,7 +7,7 @@ export const store = configureStore({
   reducer: {
     news: newsReducer,
     scans: scansReducer,
-    upload: uploadProgressReducer,
+    uploadProgress: uploadProgressReducer,
   },
 });
 
