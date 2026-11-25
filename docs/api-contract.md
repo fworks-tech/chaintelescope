@@ -46,6 +46,12 @@ CI (`build` job) runs the generator after `pnpm -r build` and fails on `git diff
 
 Every `429` from the token bucket (`#121`) is outside this matrix; it is covered by `test/rate-limit.integration.test.ts` with a frozen clock. The bucket has four rules: `/scans` 30/min, `/api` 30/min (this also gates `price-trend`/`snapshot`), `/auth/login` 5/min, other `/auth/*` 10/min. Every error body follows `{ error: { code, message, requestId }, details? }` from `#118`.
 
+## Python production snapshot
+
+The Vercel FastAPI deployment currently serves `GET /api/snapshot` using the shared `DashboardSnapshot` shape from `packages/shared/src/api.ts`: top-level fields are `camelCase`, dates are ISO strings, and valid windows are `24H`, `7D`, `30D` and `90D`. An unknown window returns `422`.
+
+This is separate from the Node route above, which still returns `503 snapshot_not_ready` until #122 parity work lands.
+
 ## Not registered
 
 - `GET /api/news` — the ingest exists but has no scheduler (#109), and the Node schema lacks the Python response's `source`/`tags`.

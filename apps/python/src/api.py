@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 from fastapi import Body, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,17 +27,17 @@ async def global_handler(request, exc):
 
 def _snapshot_to_dict(snap: DashboardSnapshot) -> dict:
     return {
-        "time_window": snap.time_window,
+        "timeWindow": snap.time_window,
         "watchlist": snap.watchlist,
-        "trend_filter": snap.trend_filter,
-        "primary_asset": snap.primary_asset,
-        "price_dates": [d.isoformat() for d in snap.price_dates],
-        "price_values": snap.price_values,
-        "price_source": snap.price_source,
+        "trendFilter": snap.trend_filter,
+        "primaryAsset": snap.primary_asset,
+        "priceDates": [d.isoformat() for d in snap.price_dates],
+        "priceValues": snap.price_values,
+        "priceSource": snap.price_source,
         "kpis": snap.kpis,
-        "risk_scores": snap.risk_scores,
-        "risk_labels": snap.risk_labels,
-        "risk_colors": snap.risk_colors,
+        "riskScores": snap.risk_scores,
+        "riskLabels": snap.risk_labels,
+        "riskColors": snap.risk_colors,
         "alerts": snap.alerts,
         "news": snap.news,
     }
@@ -49,7 +50,7 @@ def health():
 
 @app.get("/api/snapshot")
 def snapshot(
-    window: str = Query("30D", description="Time window"),
+    window: Literal["24H", "7D", "30D", "90D"] = Query("30D", description="Time window"),
     assets: str = Query("BTC", description="Comma-separated watchlist"),
     source: str = Query("auto", description="Market source"),
     trend: str = Query("all", description="Trend filter"),
