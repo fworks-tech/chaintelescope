@@ -96,7 +96,7 @@ def news(
         {
             "id": item.id,
             "source": item.source,
-            "published_at": item.published_at.isoformat(),
+            "publishedAt": item.published_at.isoformat(),
             "title": item.title,
             "url": item.url,
             "tags": item.tags,
